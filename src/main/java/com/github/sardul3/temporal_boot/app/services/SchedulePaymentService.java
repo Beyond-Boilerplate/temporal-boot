@@ -17,6 +17,10 @@ import java.util.UUID;
 @AllArgsConstructor
 public class SchedulePaymentService {
 
+    private static final String PAYMENT_SCHEDULE_QUEUE = null;
+
+    private final String WORKFLOW_ID_PREFIX = "SPY";
+
     private final WorkflowClient workflowClient;
 
     public ScheduledPaymentConfirmation buildAndStartWorkflow(SchedulePaymentRequest request, String correlationId) {
@@ -30,8 +34,8 @@ public class SchedulePaymentService {
     private SchedulePaymentWorkflow buildWorkflow(String workflowId) {
         return workflowClient.newWorkflowStub(SchedulePaymentWorkflow.class,
                 WorkflowOptions.newBuilder()
-                        .setTaskQueue("ScheduledPaymentQueue")
-                        .setWorkflowId(workflowId)
+                        .setTaskQueue(PAYMENT_SCHEDULE_QUEUE)
+                        .setWorkflowId(WORKFLOW_ID_PREFIX + workflowId)
                         .build());
     }
 

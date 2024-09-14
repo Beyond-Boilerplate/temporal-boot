@@ -1,6 +1,8 @@
 package com.github.sardul3.temporal_boot.common.config;
 
+import com.github.sardul3.temporal_boot.common.activities.PublishBannerMessageActivitiesImpl;
 import com.github.sardul3.temporal_boot.common.activities.SchedulePaymentActivitiesImpl;
+import com.github.sardul3.temporal_boot.common.workflows.PublishBannerMessageWorkflowImpl;
 import com.github.sardul3.temporal_boot.common.workflows.SchedulePaymentWorkflowImpl;
 import io.temporal.client.WorkflowClient;
 import io.temporal.serviceclient.WorkflowServiceStubs;
@@ -81,7 +83,7 @@ public class TemporalConfig {
      */
     @Bean
     public Worker worker(WorkerFactory workerFactory, SchedulePaymentActivitiesImpl schedulePaymentActivitiesImpl) {
-        Worker worker = workerFactory.newWorker("ScheduledPaymentQueue");
+        Worker worker = workerFactory.newWorker(TemporalTaskQueues.PAYMENT_SCHEDULE_QUEUE);
 
         // Register the workflow implementation with the worker
         worker.registerWorkflowImplementationTypes(SchedulePaymentWorkflowImpl.class);
@@ -89,6 +91,14 @@ public class TemporalConfig {
         // Register the activity implementation with the worker
         worker.registerActivitiesImplementations(schedulePaymentActivitiesImpl);
 
+        return worker;
+    }
+
+    @Bean
+    public Worker bannerNameSubmissionWorker(WorkerFactory workerFactory) {
+        Worker worker = workerFactory.newWorker(TemporalTaskQueues.BANNER_MESSAGE_SUBMISSION_QUEUE);
+        worker.registerWorkflowImplementationTypes(PublishBannerMessageWorkflowImpl.class);
+        worker.registerActivitiesImplementations(new PublishBannerMessageActivitiesImpl());
         return worker;
     }
 }

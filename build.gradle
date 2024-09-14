@@ -30,12 +30,15 @@ dependencies {
 	annotationProcessor 'org.projectlombok:lombok'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	testImplementation 'org.junit.vintage:junit-vintage-engine:5.9.0'
+	testImplementation 'org.mockito:mockito-core:3.9.0'
 
 	// DB related
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	runtimeOnly 'com.h2database:h2'
 
 	implementation 'io.temporal:temporal-sdk:1.16.0'
+	implementation 'io.temporal:temporal-testing:1.16.0'
 
 }
 
@@ -46,83 +49,4 @@ tasks.named('test') {
 // Spring Boot application JAR task
 springBoot {
 	mainClass.set('com.github.sardul3.temporal_boot.app.TemporalBootApplication')
-}
-
-// Build the app JAR
-// tasks.bootJar {
-// 	archiveClassifier.set('app')
-// 	mainClass.set('com.github.sardul3.temporal_boot.app.TemporalBootApplication')
-// }
-
-// // Custom task for building the worker JAR
-// tasks.register('workerJar', org.springframework.boot.gradle.tasks.bundling.BootJar) {
-// 	group = 'build'
-// 	archiveClassifier.set('worker')
-// 	mainClass.set('com.github.sardul3.temporal_boot.worker.WorkerApplication')
-
-// 	// Inherit the target Java version from the main build
-// 	targetJavaVersion = java.targetCompatibility
-
-// }
-
-// bootJar {
-//     archiveClassifier = 'app'
-//     mainClass.set('com.github.sardul3.temporal_boot.app.TemporalBootApplication')
-// }
-
-// task workerJar(type: BootJar) {
-//     group = 'build'
-//     archiveClassifier = 'worker'
-//     mainClass.set('com.github.sardul3.temporal_boot.worker.WorkerApplication')
-
-//     // Ensure all necessary dependencies and classes are included
-//     from(sourceSets.main.output)
-//     dependsOn(bootJar)
-// }
-
-// tasks.withType(org.springframework.boot.gradle.tasks.bundling.BootJar) {
-//     archiveClassifier.set('app')
-//     mainClass.set('com.github.sardul3.temporal_boot.app.TemporalBootApplication')
-// }
-
-// task workerJar(type: org.springframework.boot.gradle.tasks.bundling.BootJar) {
-//     group = 'build'
-//     archiveClassifier.set('worker')
-//     mainClass.set('com.github.sardul3.temporal_boot.worker.WorkerApplication')
-
-//     // Include classes and resources
-//     from(sourceSets.main.output)
-
-//     // Ensure that bootJar is built first, if needed
-//     dependsOn(tasks.named('bootJar'))
-
-// 	targetJavaVersion = java.targetCompatibility
-
-// }
-
-bootJar {
-    archiveClassifier.set('app')
-    mainClass.set('com.github.sardul3.temporal_boot.app.TemporalBootApplication')
-}
-
-task workerJar(type: org.springframework.boot.gradle.tasks.bundling.BootJar) {
-    group = 'build'
-    archiveClassifier.set('worker')
-    mainClass.set('com.github.sardul3.temporal_boot.worker.WorkerApplication')
-
-    // Include classes and resources
-    from(sourceSets.main.output)
-
-    // Ensure all dependencies are included
-    dependsOn configurations.runtimeClasspath
-    from {
-        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
-    }
-
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-
-
-    // Ensure that bootJar is built first, if needed
-    dependsOn tasks.named('bootJar')
-	targetJavaVersion = java.targetCompatibility
 }

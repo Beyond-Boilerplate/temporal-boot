@@ -65,17 +65,17 @@ services:
     network_mode: host
 
 
-  myapp-worker:
-    build:
-      context: .
-      dockerfile: Dockerfile.worker
-    environment:
-      - SPRING_PROFILES_ACTIVE=worker
-      - TEMPORAL_SERVER=ui7:7233
-    depends_on:
-      - temporal
-    networks:
-      - temporal-network
+  # myapp-worker:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.worker
+  #   environment:
+  #     - SPRING_PROFILES_ACTIVE=worker
+  #     - TEMPORAL_SERVER=ui7:7233
+  #   depends_on:
+  #     - temporal
+  #   networks:
+  #     - temporal-network
 
 networks:
   temporal-network:

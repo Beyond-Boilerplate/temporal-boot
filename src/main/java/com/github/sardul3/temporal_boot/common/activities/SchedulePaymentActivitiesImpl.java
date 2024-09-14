@@ -2,6 +2,8 @@ package com.github.sardul3.temporal_boot.common.activities;
 
 import com.github.sardul3.temporal_boot.app.services.TransactionService;
 import com.github.sardul3.temporal_boot.common.models.Transaction;
+
+import io.temporal.activity.Activity;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
@@ -21,7 +23,7 @@ public class SchedulePaymentActivitiesImpl implements SchedulePaymentActivities 
     @Override
     public void validateAmount(double amount) {
         if(amount <= 0) {
-            throw new IllegalArgumentException("Amount must be greater than 0");
+            throw  Activity.wrap(new IllegalArgumentException("Amount must be greater than 0"));
         }
     }
 
