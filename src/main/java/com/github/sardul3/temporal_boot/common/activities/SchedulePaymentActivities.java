@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 public interface SchedulePaymentActivities {
 
     @ActivityMethod
-    void validateAmount(double amount);
+    boolean validateAmount(double amount);
 
     @ActivityMethod
     void createScheduledTask(String from, String to, double amount, LocalDateTime scheduledDate);

@@ -2,12 +2,17 @@ package com.github.sardul3.temporal_boot.common.workflows;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.github.sardul3.temporal_boot.common.activities.PublishBannerMessageActivities;
 import com.github.sardul3.temporal_boot.common.activities.PublishBannerMessageActivitiesImpl;
 
 import io.temporal.client.WorkflowException;
@@ -16,7 +21,7 @@ import io.temporal.testing.TestWorkflowExtension;
 import io.temporal.worker.Worker;
 
 
-public class PublishBannerMessageWorkflowImplTest {
+public class PublishBannerMessageWorkflowImplMockTest {
 
     @RegisterExtension
     public static final TestWorkflowExtension workflowExtension =
@@ -27,8 +32,7 @@ public class PublishBannerMessageWorkflowImplTest {
 
     @BeforeEach
     void setUp(TestWorkflowEnvironment testEnv, Worker worker, PublishBannerMessageWorkflow workflow) {
-        worker.registerActivitiesImplementations(new PublishBannerMessageActivitiesImpl());
-        testEnv.start();
+        // testEnv.start();
     }
 
     @AfterEach
@@ -39,16 +43,17 @@ public class PublishBannerMessageWorkflowImplTest {
     }
 
   @Test
-  public void testValidBannerName(TestWorkflowEnvironment testEnv, Worker worker, PublishBannerMessageWorkflow workflow) {
-   String result = workflow.createAndPublishBannerMessage("Invalid.. or am I??");
-   String expected = "PUBLISHED";
-   assertEquals(expected, result);
-  }
+  public void testValidBannerNameWithMock(TestWorkflowEnvironment testEnv, Worker worker, PublishBannerMessageWorkflow workflow) {
+    PublishBannerMessageActivities mockedActivities = 
+        mock(PublishBannerMessageActivities.class, withSettings().withoutAnnotations());
+    when(mockedActivities.checkBannerLengthIsAppropriate(anyString())).thenReturn(true);
+    when(mockedActivities.publishBannerMessage(anyString())).thenReturn("PUBLISHED");
+    worker.registerActivitiesImplementations(mockedActivities);
+    testEnv.start();
 
-  @Test
-  public void testInvalidBannerName(TestWorkflowEnvironment testEnv, Worker worker, PublishBannerMessageWorkflow workflow) {
-    assertThrows(WorkflowException.class, () -> {
-        workflow.createAndPublishBannerMessage("Invalid");
-    });
+    String result = workflow.createAndPublishBannerMessage("Invalid.. or am I??");
+    String expected = "PUBLISHED";
+    assertEquals(expected, result);
+
   }
 }

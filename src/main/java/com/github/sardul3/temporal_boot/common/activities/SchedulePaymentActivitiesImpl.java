@@ -21,10 +21,11 @@ public class SchedulePaymentActivitiesImpl implements SchedulePaymentActivities 
    }
 
     @Override
-    public void validateAmount(double amount) {
+    public boolean validateAmount(double amount) {
         if(amount <= 0) {
             throw  Activity.wrap(new IllegalArgumentException("Amount must be greater than 0"));
         }
+        return true;
     }
 
     @Override

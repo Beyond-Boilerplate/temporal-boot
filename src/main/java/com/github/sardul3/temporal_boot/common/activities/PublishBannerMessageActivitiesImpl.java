@@ -1,5 +1,7 @@
 package com.github.sardul3.temporal_boot.common.activities;
 
+import org.slf4j.LoggerFactory;
+
 import com.github.sardul3.temporal_boot.app.exceptions.BannerLengthTooSmallException;
 
 import io.temporal.activity.Activity;
@@ -7,7 +9,7 @@ import io.temporal.failure.ApplicationFailure;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class PublishBannerMessageActivitiesImpl implements PublishBannerMessageActivities{
+public class PublishBannerMessageActivitiesImpl implements PublishBannerMessageActivities {
 
     @Override
     public boolean checkBannerLengthIsAppropriate(String bannerMessage) {

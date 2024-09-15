@@ -51,7 +51,11 @@ public class SchedulePaymentWorkflowImpl implements SchedulePaymentWorkflow {
         Duration delay = Duration.between(workflowNow, scheduledDate);
 
         if (!delay.isNegative()) {
+            // blocking call (await or sleep)
             Workflow.await(delay, () -> isCancelled);
+
+            // non-blocking
+            Workflow.newTimer(delay);
 //            Workflow.sleep(delay);
         }
 

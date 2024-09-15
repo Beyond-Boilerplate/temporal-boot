@@ -187,3 +187,59 @@ Here’s a **checklist** of **DOs and DON'Ts** when working with Temporal in a S
 
 ### **Conclusion:**
 Following these **DOs and DON'Ts** ensures that your Temporal workflows and activities remain deterministic, scalable, and maintainable within a **Spring Boot** environment. By leveraging Temporal’s features and best practices, you can build highly reliable distributed systems that are easier to manage and debug.
+
+
+**Step-by-Step Workflow Execution**
+- The workflow execution begins by combining code from the workflow definition with an input request (e.g., customer details and pizza order).
+- Temporal logs events such as workflow execution started, workflow tasks scheduled, and activity tasks scheduled.
+  
+**Worker and Cluster Interaction**
+- A worker accepts tasks from the queue, and it pulls these tasks to execute step-by-step code.
+- Commands such as requesting activity execution are issued by the worker to the Temporal cluster.
+  
+**Handling Workflow Crashes and Recovery via Replay**
+- The video simulates a worker crash during workflow execution and explains how Temporal handles state recovery through replay.
+- Temporal uses event history to restore the workflow's previous state, ensuring that it matches the pre-crash execution.
+
+**Replay Mechanism and Determinism**
+- Temporal's workflow replay mechanism relies on event history to restore variable states, meaning the workflow can resume execution as if the crash never occurred.
+- Temporal ensures workflows are deterministic by suppressing duplicated log outputs during replay, eliminating any discrepancies.
+  
+**Conclusion: Durable Execution with Temporal Replay**
+- The replay mechanism guarantees that workflows maintain the same state before and after a crash.
+- Temporal logs the final "workflow execution completed" event, ensuring durable execution.
+
+
+Here is a structured summary of the video "Understanding Temporal Workflow Determinism":
+
+**Introduction to Workflow Determinism**
+- what it means for Temporal workflow code to be deterministic and why this is crucial for Temporal's operations?
+- Temporal requires that workflows behave deterministically, meaning they should produce the same output given the same input every time.
+
+**Temporal Workflow Execution**
+- As the worker executes workflow code, it issues commands to the Temporal cluster to perform actions like executing activities or starting timers.
+- Temporal keeps an event history for each workflow execution, where specific commands (e.g., scheduling a task or starting a timer) correspond to events in the history.
+
+**History Replay and Determinism**
+- History replay allows Temporal to recover the state of a workflow after a worker crash or other interruptions.
+- During replay, workers check if commands match the corresponding events in the history. If a mismatch occurs, a non-deterministic error is triggered, making it impossible to restore the workflow state.
+
+**Example of Non-Deterministic Workflow**
+- Consider a non-deterministic error with a workflow that uses a random number generator.
+- In one execution, the random number generates "84," leading to the next line being executed. However, during replay, the random number generates "14," causing a different path to be taken.
+- This mismatch in the sequence of commands results in a non-deterministic error, as the worker cannot align the commands with the event history.
+
+**Conclusion: Importance of Determinism**
+- For Temporal to guarantee durable workflow execution, the workflow must always produce the same sequence of commands for a given input.
+- Non-determinism, such as using random values, can disrupt this process and cause errors during workflow recovery.
+
+**Examples of Changes That May Lead to Non-Deterministic Errors**
+- Adding or removing an Activity
+- Switching the Activity Type used in a call to an Activity Method
+- Adding or removing a Timer
+- Altering the execution order of Activities or Timers relative to one another
+
+**Examples of Changes That Do Not Lead to Non-Deterministic Errors**
+- Modifying statements in a Workflow Definition, such as logging statements, that do not affect the Commands generated during Workflow Execution
+- Changing attributes in a ActivityOptions or RetryPolicy
+- Modifying code inside of an Activity Definition

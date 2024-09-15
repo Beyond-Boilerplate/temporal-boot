@@ -2,7 +2,9 @@ package com.github.sardul3.temporal_boot.app.services;
 
 import com.github.sardul3.temporal_boot.api.dtos.SchedulePaymentRequest;
 import com.github.sardul3.temporal_boot.api.dtos.ScheduledPaymentConfirmation;
+import com.github.sardul3.temporal_boot.common.config.TemporalTaskQueues;
 import com.github.sardul3.temporal_boot.common.workflows.SchedulePaymentWorkflow;
+import io.temporal.api.enums.v1.WorkflowIdReusePolicy;
 import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowOptions;
 import lombok.AllArgsConstructor;
@@ -17,9 +19,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class SchedulePaymentService {
 
-    private static final String PAYMENT_SCHEDULE_QUEUE = null;
-
-    private final String WORKFLOW_ID_PREFIX = "SPY";
+    private final String WORKFLOW_ID_PREFIX = "SPY-";
 
     private final WorkflowClient workflowClient;
 
@@ -34,8 +34,11 @@ public class SchedulePaymentService {
     private SchedulePaymentWorkflow buildWorkflow(String workflowId) {
         return workflowClient.newWorkflowStub(SchedulePaymentWorkflow.class,
                 WorkflowOptions.newBuilder()
-                        .setTaskQueue(PAYMENT_SCHEDULE_QUEUE)
+                        .setTaskQueue(TemporalTaskQueues.PAYMENT_SCHEDULE_QUEUE)
                         .setWorkflowId(WORKFLOW_ID_PREFIX + workflowId)
+                        .setWorkflowIdReusePolicy(
+                                WorkflowIdReusePolicy.WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY
+                        )
                         .build());
     }
 
