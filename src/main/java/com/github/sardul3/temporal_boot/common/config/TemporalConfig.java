@@ -4,13 +4,22 @@ import com.github.sardul3.temporal_boot.common.activities.PublishBannerMessageAc
 import com.github.sardul3.temporal_boot.common.activities.SchedulePaymentActivitiesImpl;
 import com.github.sardul3.temporal_boot.common.workflows.PublishBannerMessageWorkflowImpl;
 import com.github.sardul3.temporal_boot.common.workflows.SchedulePaymentWorkflowImpl;
+
+import io.grpc.StatusRuntimeException;
 import io.temporal.client.WorkflowClient;
+import io.temporal.client.WorkflowClientOptions;
 import io.temporal.serviceclient.WorkflowServiceStubs;
 import io.temporal.serviceclient.WorkflowServiceStubsOptions;
 import io.temporal.worker.Worker;
 import io.temporal.worker.WorkerFactory;
+import lombok.extern.slf4j.Slf4j;
+import java.time.Duration;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.EnableRetry;
+import org.springframework.retry.annotation.Retryable;
 
 /**
  * TemporalConfig is a Spring Boot configuration class responsible for setting up the
@@ -34,6 +43,8 @@ import org.springframework.context.annotation.Configuration;
  * beans for workflow execution and activity handling.
  */
 @Configuration
+@EnableRetry
+@Slf4j
 public class TemporalConfig {
 
     /**
@@ -46,11 +57,23 @@ public class TemporalConfig {
     @Bean
     public WorkflowClient workflowClient() {
         // Connects to local instance of temporal server
-        WorkflowServiceStubsOptions options = WorkflowServiceStubsOptions.newBuilder()
+        WorkflowServiceStubsOptions stubOptions = WorkflowServiceStubsOptions.newBuilder()
             .setTarget("localhost:7233") // Replace with your Temporal service target
+            .setRpcTimeout(Duration.ofSeconds(30))
             .build();
-        WorkflowServiceStubs service = WorkflowServiceStubs.newServiceStubs(options);
-        return WorkflowClient.newInstance(service);
+        
+        log.info("Attempting to connect to Temporal server...");
+        WorkflowServiceStubs service = WorkflowServiceStubs.newServiceStubs(stubOptions);
+
+        TemporalNameSpaceManagement namespaceHelper = new TemporalNameSpaceManagement(service);
+        namespaceHelper.ensureNamespaceExists("learning-temporal-boot", 3);  // Retention period of 3 days
+
+        WorkflowClientOptions clientOptions = WorkflowClientOptions.newBuilder()
+            .setNamespace("learning-temporal-boot")
+            .build();
+        
+        log.info("Connected to Temporal server successfully.");
+        return WorkflowClient.newInstance(service, clientOptions);
     }
 
     /**
@@ -62,6 +85,10 @@ public class TemporalConfig {
      */
     @Bean
     public WorkerFactory workerFactory(WorkflowClient workflowClient) {
+        if (workflowClient == null) {
+            log.warn("Temporal client is null. Worker factory will not be created.");
+            return null;
+        }
         return WorkerFactory.newInstance(workflowClient);
     }
 

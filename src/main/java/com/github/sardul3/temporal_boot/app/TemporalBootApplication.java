@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 import io.temporal.worker.WorkerFactory;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @SpringBootApplication
 @ComponentScan(basePackages = {
@@ -17,6 +18,7 @@ import lombok.AllArgsConstructor;
 @EntityScan(basePackages = "com.github.sardul3.temporal_boot.common.models") 
 @EnableJpaRepositories(basePackages = {"com.github.sardul3.temporal_boot.*"})
 @AllArgsConstructor
+@Slf4j
 public class TemporalBootApplication implements CommandLineRunner {
 
 	private final WorkerFactory workerFactory;
@@ -27,6 +29,11 @@ public class TemporalBootApplication implements CommandLineRunner {
 
 	@Override
 	public void run(String... args) throws Exception {
-		workerFactory.start();
+		if (workerFactory != null) {
+            workerFactory.start();
+            log.info("Temporal workers started successfully.");
+        } else {
+            log.warn("Temporal server is not available. No workers will be started.");
+        }
 	}
 }

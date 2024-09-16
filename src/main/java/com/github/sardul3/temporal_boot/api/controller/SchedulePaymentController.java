@@ -7,6 +7,9 @@ import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+
 
 @RestController
 @RequestMapping("/api/transactions")
@@ -23,5 +26,12 @@ public class SchedulePaymentController {
         ScheduledPaymentConfirmation confirmation = schedulePaymentService.buildAndStartWorkflow(request, xCorrelationId);
         return ResponseEntity.status(HttpStatus.CREATED).body(confirmation);
     }
+
+    @PostMapping("/schedule/{id}/cancel")
+    public String postMethodName(@PathVariable(value = "id") String scheduleId) {
+        String message = schedulePaymentService.buildAndStartWorkflowForCancellation(scheduleId);
+        return message;
+    }
+    
 
 }

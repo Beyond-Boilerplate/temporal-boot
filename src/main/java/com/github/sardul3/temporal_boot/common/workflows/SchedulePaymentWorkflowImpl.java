@@ -68,7 +68,7 @@ public class SchedulePaymentWorkflowImpl implements SchedulePaymentWorkflow {
     }
 
     @Override
-    public void cancelPayment() {
+    public void cancelPayment(String scheduleId) {
         this.isCancelled = true;
     }
 }

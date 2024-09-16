@@ -31,6 +31,13 @@ public class SchedulePaymentService {
         return buildConfirmation(workflowId);
     }
 
+    public String buildAndStartWorkflowForCancellation(String scheduleId) {
+        SchedulePaymentWorkflow workflow = 
+            workflowClient.newWorkflowStub(SchedulePaymentWorkflow.class, WORKFLOW_ID_PREFIX + scheduleId);
+        workflow.cancelPayment(scheduleId);
+        return "Cancellation Requested";
+    }
+
     private SchedulePaymentWorkflow buildWorkflow(String workflowId) {
         return workflowClient.newWorkflowStub(SchedulePaymentWorkflow.class,
                 WorkflowOptions.newBuilder()
