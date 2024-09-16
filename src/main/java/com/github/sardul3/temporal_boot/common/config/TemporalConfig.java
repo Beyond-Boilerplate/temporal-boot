@@ -122,10 +122,10 @@ public class TemporalConfig {
     }
 
     @Bean
-    public Worker bannerNameSubmissionWorker(WorkerFactory workerFactory, PublishBannerMessageActivitiesImpl publishBannerMessageActivitiesImpl) {
+    public Worker bannerNameSubmissionWorker(WorkerFactory workerFactory) {
         Worker worker = workerFactory.newWorker(TemporalTaskQueues.BANNER_MESSAGE_SUBMISSION_QUEUE);
         worker.registerWorkflowImplementationTypes(PublishBannerMessageWorkflowImpl.class);
-        worker.registerActivitiesImplementations(publishBannerMessageActivitiesImpl);
+        worker.registerActivitiesImplementations(new PublishBannerMessageActivitiesImpl());
         return worker;
     }
 }
