@@ -4,6 +4,8 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
+import com.github.sardul3.temporal_boot.api.dtos.ApprovalSignal;
+import com.github.sardul3.temporal_boot.api.dtos.BannerChangeRequest;
 import com.github.sardul3.temporal_boot.api.dtos.BannerNameRequest;
 import com.github.sardul3.temporal_boot.api.dtos.BannerNameResponse;
 import com.github.sardul3.temporal_boot.common.config.TemporalTaskQueues;
@@ -21,11 +23,20 @@ public class PublishBannerNameService {
     
     private WorkflowClient workflowClient;
 
-        public BannerNameResponse buildAndStartWorkflow(BannerNameRequest request, String correlationId) {
+    public BannerNameResponse buildAndStartWorkflow(BannerChangeRequest request, String correlationId) {
         String workflowId = computeWorkflowId(correlationId);
         PublishBannerMessageWorkflow workflow = buildWorkflow(workflowId);
-        WorkflowClient.start(workflow::createAndPublishBannerMessage, request.getMessage());
+        WorkflowClient.start(workflow::createAndPublishBannerMessage, request, correlationId);
         return buildResponse(workflowId);
+    }
+
+    // Signal the workflow for an approval
+    public void signalApproval(ApprovalSignal approvalSignal, String workflowId) {
+        PublishBannerMessageWorkflow workflow = workflowClient
+            .newWorkflowStub(PublishBannerMessageWorkflow.class, workflowId);
+
+        // Signal the workflow for approval
+        workflow.signalApproval(approvalSignal);
     }
 
     private PublishBannerMessageWorkflow buildWorkflow(String workflowId) {

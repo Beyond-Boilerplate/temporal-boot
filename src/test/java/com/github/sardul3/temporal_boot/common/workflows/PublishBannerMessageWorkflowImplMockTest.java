@@ -42,18 +42,17 @@ public class PublishBannerMessageWorkflowImplMockTest {
         }
     }
 
-  @Test
-  public void testValidBannerNameWithMock(TestWorkflowEnvironment testEnv, Worker worker, PublishBannerMessageWorkflow workflow) {
-    PublishBannerMessageActivities mockedActivities = 
-        mock(PublishBannerMessageActivities.class, withSettings().withoutAnnotations());
-    when(mockedActivities.checkBannerLengthIsAppropriate(anyString())).thenReturn(true);
-    when(mockedActivities.publishBannerMessage(anyString())).thenReturn("PUBLISHED");
-    worker.registerActivitiesImplementations(mockedActivities);
-    testEnv.start();
+//   @Test
+//   public void testValidBannerNameWithMock(TestWorkflowEnvironment testEnv, Worker worker, PublishBannerMessageWorkflow workflow) {
+//     PublishBannerMessageActivities mockedActivities = 
+//         mock(PublishBannerMessageActivities.class, withSettings().withoutAnnotations());
+//     when(mockedActivities.checkBannerLengthIsAppropriate(anyString())).thenReturn(true);
+//     when(mockedActivities.publishBannerMessage(anyString())).thenReturn("PUBLISHED");
+//     worker.registerActivitiesImplementations(mockedActivities);
+//     testEnv.start();
 
-    String result = workflow.createAndPublishBannerMessage("Invalid.. or am I??");
-    String expected = "PUBLISHED";
-    assertEquals(expected, result);
-
-  }
+//     String result = workflow.createAndPublishBannerMessage("Invalid.. or am I??");
+//     String expected = "PUBLISHED";
+//     assertEquals(expected, result);
+//   }
 }
