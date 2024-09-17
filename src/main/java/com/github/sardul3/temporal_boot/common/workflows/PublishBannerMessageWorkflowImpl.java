@@ -36,23 +36,31 @@ public class PublishBannerMessageWorkflowImpl implements PublishBannerMessageWor
      */
     PublishBannerMessageActivities activities = Workflow.newActivityStub(PublishBannerMessageActivities.class, options);
 
+    String userFacingStatus = "NOT_STARTED";
+
     // This is the entry point to the Workflow.
     @Override
     public String createAndPublishBannerMessage(String message) {
-
         // syncronious execution (blocking)
         activities.checkBannerLengthIsAppropriate(message);
         activities.checkRequiredApprovals(message);
-
+        userFacingStatus = "CHECKS_COMPLETE";
         //asycronous (non-blocking)
         Promise<String> newMessage = Async.function(activities::correctBannerFormatting, message);
-        
+
         // get() on promise is a blocking call
         log.info("new messsage is {}", newMessage.get());
         activities.correctBannerFormatting(message);
+        userFacingStatus = "BANNER_FORMATTED";
         activities.ensureCurrentBannerMessageIsNotSame(message);
         activities.saveBannerMessage(message);
+        userFacingStatus = "BANNER_SAVED";
         return activities.publishBannerMessage(message);
+    }
+
+    @Override
+    public String getWorkflowStatus() {
+        return this.userFacingStatus;
     }
     
 }

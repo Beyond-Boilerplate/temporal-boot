@@ -21,11 +21,18 @@ public class PublishBannerNameService {
     
     private WorkflowClient workflowClient;
 
-        public BannerNameResponse buildAndStartWorkflow(BannerNameRequest request, String correlationId) {
+    public BannerNameResponse buildAndStartWorkflow(BannerNameRequest request, String correlationId) {
         String workflowId = computeWorkflowId(correlationId);
         PublishBannerMessageWorkflow workflow = buildWorkflow(workflowId);
         WorkflowClient.start(workflow::createAndPublishBannerMessage, request.getMessage());
         return buildResponse(workflowId);
+    }
+
+    // USE workflowStub.cancel() to cancel the workflow execution
+    public String buildAndStartWorkflowStatusQuery(String workflowId) {
+        PublishBannerMessageWorkflow workflow = 
+            workflowClient.newWorkflowStub(PublishBannerMessageWorkflow.class, WORKFLOW_ID_PREFIX + workflowId);
+        return workflow.getWorkflowStatus();
     }
 
     private PublishBannerMessageWorkflow buildWorkflow(String workflowId) {

@@ -7,6 +7,7 @@ import com.github.sardul3.temporal_boot.common.workflows.SchedulePaymentWorkflow
 import io.temporal.api.enums.v1.WorkflowIdReusePolicy;
 import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowOptions;
+import io.temporal.client.WorkflowStub;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -31,11 +32,22 @@ public class SchedulePaymentService {
         return buildConfirmation(workflowId);
     }
 
+    // Canceling a Workflow is a gentle request for the Workflow Execution to stop, but allows the process to perform cleanup before exiting
+    // Terminating a Workflow Execution is more abrupt and is similar to killing a process
     public String buildAndStartWorkflowForCancellation(String scheduleId) {
+        // USE Workflow.newExternalWorkflowStub to send SIGNALs from one workflow to another
         SchedulePaymentWorkflow workflow = 
             workflowClient.newWorkflowStub(SchedulePaymentWorkflow.class, WORKFLOW_ID_PREFIX + scheduleId);
-        workflow.cancelPayment(scheduleId);
+        WorkflowStub workflowStub = WorkflowStub.fromTyped(workflow);
+        workflowStub.cancel();
         return "Cancellation Requested";
+    }
+
+    public String buildAndStartWorkflowForFastForward(String workflowID) {
+        SchedulePaymentWorkflow workflow = 
+             workflowClient.newWorkflowStub(SchedulePaymentWorkflow.class, WORKFLOW_ID_PREFIX + workflowID);
+        workflow.fastForwardSignal(workflowID);
+        return "Fast Forward Requested";
     }
 
     private SchedulePaymentWorkflow buildWorkflow(String workflowId) {

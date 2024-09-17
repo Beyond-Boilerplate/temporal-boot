@@ -27,11 +27,16 @@ public class SchedulePaymentController {
         return ResponseEntity.status(HttpStatus.CREATED).body(confirmation);
     }
 
+    @PostMapping("/schedule/{id}/fast-forward")
+    public String postMethodNameFastForward(@PathVariable(value = "id") String scheduleId) {
+        String message = schedulePaymentService.buildAndStartWorkflowForFastForward(scheduleId);
+        return message;
+    }
+
+
     @PostMapping("/schedule/{id}/cancel")
-    public String postMethodName(@PathVariable(value = "id") String scheduleId) {
+    public String postMethodNameCancel(@PathVariable(value = "id") String scheduleId) {
         String message = schedulePaymentService.buildAndStartWorkflowForCancellation(scheduleId);
         return message;
     }
-    
-
 }

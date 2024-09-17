@@ -17,7 +17,7 @@ import java.time.ZoneId;
 
 public class SchedulePaymentWorkflowImpl implements SchedulePaymentWorkflow {
 
-    private boolean isCancelled = false;
+    private boolean fastForward = false;
 
     private final SchedulePaymentActivities activities = Workflow.newActivityStub(
             SchedulePaymentActivities.class,
@@ -52,15 +52,17 @@ public class SchedulePaymentWorkflowImpl implements SchedulePaymentWorkflow {
 
         if (!delay.isNegative()) {
             // blocking call (await or sleep)
-            Workflow.await(delay, () -> isCancelled);
+            Workflow.await(delay, () -> fastForward);
 
             // non-blocking
-            Workflow.newTimer(delay);
-//            Workflow.sleep(delay);
+            // Workflow.newTimer(delay);
+            // Workflow.sleep(delay);
         }
 
-        if(isCancelled) {
-            throw Activity.wrap(new TransactionCancelledException());
+        if(fastForward) {
+            Workflow.getLogger(SchedulePaymentWorkflowImpl.class).info("Payment was fast-forwarded to prevent scheduling.");
+            // throw Activity.wrap(new TransactionCancelledException());
+            // return null;
         }
 
         // Step 4: Execute the payment once the scheduled time has arrived
@@ -68,7 +70,7 @@ public class SchedulePaymentWorkflowImpl implements SchedulePaymentWorkflow {
     }
 
     @Override
-    public void cancelPayment(String scheduleId) {
-        this.isCancelled = true;
+    public void fastForwardSignal(String scheduleId) {
+        this.fastForward = true;
     }
 }

@@ -14,5 +14,5 @@ public interface SchedulePaymentWorkflow {
     Transaction schedulePayment(String from, String to, double amount, LocalDateTime scheduledDate);
 
     @SignalMethod
-    void cancelPayment(String scheduleId);
+    void fastForwardSignal(String scheduleId);
 }

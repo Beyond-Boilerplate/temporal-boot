@@ -288,3 +288,36 @@ Here's a summary of the key points from the content you provided:
 - **Frontend Service**: Clients connect via TCP (default port 7233).
 - **Safe Activity Changes**: Activities can be modified freely, but Workflow changes require compatibility testing.
 
+### Signals in Temporal
+
+- **Signals**: Asynchronous messages used to change the state or control the flow of a running Workflow Execution.
+- **Usage**: Suitable for workflows that need to react to external events, such as human task completions or user interactions.
+- **Examples**: 
+  - Modifying orders in e-commerce.
+  - Confirming payment to proceed with shipping.
+  - Handling frequently changing data like stock prices.
+
+### DynamicSignalHandler
+- **Purpose**: Handles unregistered or unexpected Signals in a workflow.
+- **Usage**: Register a handler for undefined Signals using `Workflow.registerListener()`.
+
+### When to Throw Exceptions in Temporal Workflows
+- **Throw Exceptions**:
+  - For non-recoverable errors (e.g., invalid inputs).
+  - Explicit workflow cancellation (e.g., user cancellation).
+  - Fatal system failures.
+  - Exceeding retries or timeouts.
+- **Do Not Throw Exceptions**:
+  - For transient errors (Temporal handles retries).
+  - For expected conditions (use conditional logic).
+  - During graceful cancellations (use signals, not exceptions).
+  
+### Signal-With-Start
+- **Feature**: Sends a signal to a Workflow and starts it if it is not running.
+- **Usage**: Useful to ensure workflow execution when signaling.
+
+### Common Signal Issues
+- **Outgoing Signal Limit**: 2000 pending outgoing Signals per Workflow.
+- **Receiving Signal Limit**: 10,000 Signals per Workflow; 51,200 event history limit.
+- **Handling High Signal Volume**: Use batching to avoid UnhandledCommand errors or performance degradation.
+
