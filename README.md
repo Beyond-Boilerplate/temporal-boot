@@ -321,3 +321,587 @@ Here's a summary of the key points from the content you provided:
 - **Receiving Signal Limit**: 10,000 Signals per Workflow; 51,200 event history limit.
 - **Handling High Signal Volume**: Use batching to avoid UnhandledCommand errors or performance degradation.
 
+### Summary of Cancellation Scopes in Temporal Java SDK
+
+A **Cancellation Scope** in the Temporal Java SDK allows workflows to handle cancellation requests in a controlled manner. Each part of a workflow can be run inside its own cancellation scope, which can be canceled independently of other parts. Cancellation scopes help manage cleanup, timeouts, and resource management when a workflow or its activities are canceled.
+
+Here are the main pointers and examples:
+
+### 1. **Basic Cancellation Scope**
+- **Purpose:** Cancels all child operations when the scope is canceled.
+- **Usage:** Useful when you want to run a set of tasks that may need to be canceled if a condition arises.
+
+**Example:**
+```java
+CancellationScope scope = Workflow.newCancellationScope(
+    () -> {
+        // Run multiple asynchronous activities
+        for (String greeting : greetings) {
+            results.add(Async.function(activities::composeGreeting, greeting, name));
+        }
+    });
+scope.run(); // Non-blocking execution within the scope
+String result = Promise.anyOf(results).get();
+scope.cancel(); // Cancel all uncompleted tasks
+```
+
+### 2. **Cancellation Scope with Timeout**
+- **Purpose:** Automatically cancels operations within the scope if they take too long.
+- **Usage:** Suitable for scenarios where tasks should have a time limit.
+
+**Example:**
+```java
+CancellationScope scope = Workflow.newCancellationScope(
+    () -> {
+        try {
+            result = activities.updateInfo(input);
+        } catch (ActivityFailure e) {
+            throw e;
+        }
+    });
+
+Workflow.newTimer(Duration.ofSeconds(3))
+    .thenApply(result -> {
+        scope.cancel(); // Cancel if timeout occurs
+        return null;
+    });
+
+try {
+    scope.run(); // Run the activity
+} catch (ActivityFailure e) {
+    if (e.getCause() instanceof CanceledFailure) {
+        result = "Activity canceled due to timeout.";
+    }
+}
+```
+
+### 3. **Detached Cancellation Scope**
+- **Purpose:** Performs cleanup after workflow cancellation without being canceled itself.
+- **Usage:** Suitable for tasks like cleanup that need to complete even if the workflow is canceled.
+
+**Example:**
+```java
+try {
+    this.greeting = activities.sayHello(name);
+    return greeting;
+} catch (ActivityFailure af) {
+    // Detached scope for cleanup after workflow cancellation
+    CancellationScope detached = Workflow.newDetachedCancellationScope(
+        () -> greeting = activities.sayGoodBye(name));
+    detached.run();
+    throw af;
+}
+```
+
+### 4. **External Cancellation**
+- **Purpose:** Allows an external source (e.g., user action) to trigger the cancellation of a workflow.
+- **Usage:** Used when the workflow needs to be interrupted and properly cleaned up.
+
+**Example:**
+```java
+public String orderProcessingWorkflow(String name) {
+    try {
+        // Workflow implementation
+    } catch (ActivityFailure af) {
+        if (af.getCause() instanceof CanceledFailure) {
+            CancellationScope detached = Workflow.newDetachedCancellationScope(
+                this::cleanup); // Perform necessary cleanup
+            detached.run();
+            throw af;
+        }
+    }
+}
+```
+
+### 5. **Best Practices**
+- Use **DetachedCancellationScopes** for critical operations that must run to completion.
+- Handle external cancellation requests by catching `CanceledFailure` and performing necessary cleanup.
+- Always rethrow `CanceledFailure` in activities to ensure Temporal correctly recognizes the cancellation.
+
+By understanding and applying these patterns, you can handle workflow and activity cancellations gracefully in Temporal, ensuring efficient resource management and clean shutdowns.
+
+### Summary of Asynchronous Activity Completion in Temporal
+
+Asynchronous Activity Completion in Temporal allows an Activity to return without marking it as complete, enabling external systems to interact with Temporal before the activity is considered finished. This is particularly useful when an Activity involves long-running tasks or external dependencies, such as waiting for user input or handling operations on an external system.
+
+#### Key Concepts:
+
+1. **Asynchronous Activity Completion**: The Activity does not complete immediately after the method returns. Instead, it can stay "in progress" while awaiting an external trigger to mark it complete.
+   
+2. **Task Tokens**: These are unique identifiers used to track an Activity execution. They can be passed to external systems to allow completion later.
+
+3. **Heartbeats**: While an Activity is in progress, periodic updates or "heartbeats" can be sent back to the Temporal server to keep the Activity alive and prevent it from timing out.
+
+4. **Activity Execution Context**: The `ActivityExecutionContext` provides methods to control the lifecycle of the Activity, such as marking it as incomplete and sending heartbeats.
+
+5. **Activity Completion Client**: The `ActivityCompletionClient` is used to signal the completion of an Activity from an external process, passing the Task Token and the result of the Activity.
+
+#### Example Code: Asynchronous Activity Completion
+
+##### Activity Implementation
+
+```java
+import io.temporal.activity.Activity;
+import io.temporal.activity.ActivityExecutionContext;
+
+public class VideoProcessingActivityImpl implements VideoProcessingActivity {
+
+    @Override
+    public String uploadVideo(String videoPath) {
+        ActivityExecutionContext context = Activity.getExecutionContext();
+
+        // Get the Task Token and log it securely (this can be sent to an external system)
+        byte[] taskToken = context.getTaskToken();
+        context.doNotCompleteOnReturn();
+
+        // Simulate the upload task being handed over to an external system
+        // The actual upload process would occur asynchronously outside of Temporal
+
+        // Return immediately but do not complete the activity
+        return "Upload initiated. Task completion will be handled asynchronously.";
+    }
+}
+```
+
+##### External Completion Service
+
+```java
+import io.temporal.client.ActivityCompletionClient;
+import io.temporal.client.WorkflowClient;
+import io.temporal.serviceclient.WorkflowServiceStubs;
+
+import java.util.Base64;
+
+public class ExternalUploadCompletionService {
+
+    public static void main(String[] args) throws InterruptedException {
+        WorkflowServiceStubs service = WorkflowServiceStubs.newLocalServiceStubs();
+        WorkflowClient client = WorkflowClient.newInstance(service);
+        ActivityCompletionClient completionClient = client.newActivityCompletionClient();
+
+        // Simulate external task progress
+        byte[] taskToken = Base64.getDecoder().decode(args[0]);
+
+        for (int i = 1; i <= 10; i++) {
+            Thread.sleep(3000); // Simulating a delay of 3 seconds
+            completionClient.heartbeat(taskToken, i * 10 + "% complete");
+        }
+
+        // Complete the activity with the final result
+        completionClient.complete(taskToken, "Upload successful. Video URL: https://example.com/video/1234");
+    }
+}
+```
+
+#### Steps to Complete an Asynchronous Activity:
+
+1. **Provide Task Token**: The `ActivityExecutionContext` provides a task token, which is passed to the external service to later mark the activity as complete.
+   
+2. **doNotCompleteOnReturn()**: The method `doNotCompleteOnReturn()` ensures that the Activity does not finish even after returning from the method.
+
+3. **Heartbeats**: The external system periodically sends heartbeats to Temporal to inform it of ongoing progress, avoiding the Activity being marked as failed due to timeouts.
+
+4. **Completion**: Once the external process completes, the `ActivityCompletionClient` uses the task token to notify Temporal that the Activity is complete.
+
+#### Best Practices:
+
+- **Secure Task Tokens**: Treat task tokens as sensitive information and encrypt them before passing to external services.
+- **Retry Handling**: Make sure to account for task retries, as each retry creates a new task token. 
+- **Heartbeat Management**: Use heartbeats to track progress and avoid timeouts.
+
+---
+
+### Async Activity Completion Example with Percentage Updates (Every 3 Seconds) in Spring Boot
+
+Here's how to implement an asynchronous activity where progress updates are sent every 3 seconds, with a 10% increment in progress, completing the task at 100%.
+
+##### Activity Interface
+
+```java
+public interface VideoProcessingActivity {
+    String uploadVideo(String videoPath);
+}
+```
+
+##### Activity Implementation
+
+```java
+import io.temporal.activity.Activity;
+import io.temporal.activity.ActivityExecutionContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
+@Service
+public class VideoProcessingActivityImpl implements VideoProcessingActivity {
+
+    private static final Logger logger = LoggerFactory.getLogger(VideoProcessingActivityImpl.class);
+
+    @Override
+    public String uploadVideo(String videoPath) {
+        ActivityExecutionContext context = Activity.getExecutionContext();
+
+        // Retrieve task token
+        byte[] taskToken = context.getTaskToken();
+        logger.info("Task Token for async completion: {}", Base64.getEncoder().encodeToString(taskToken));
+
+        // Mark activity as "in-progress"
+        context.doNotCompleteOnReturn();
+
+        // Simulate handing over the task to another service (asynchronously)
+        new Thread(() -> processUpload(taskToken)).start();
+
+        return "Video upload started";
+    }
+
+    private void processUpload(byte[] taskToken) {
+        try {
+            // Simulate upload progress (10% every 3 seconds)
+            for (int i = 1; i <= 10; i++) {
+                Thread.sleep(3000); // Wait for 3 seconds
+                sendHeartbeat(taskToken, i * 10 + "% uploaded");
+            }
+            completeActivity(taskToken, "Upload complete. URL: https://example.com/video/1234");
+
+        } catch (InterruptedException e) {
+            logger.error("Upload process interrupted", e);
+        }
+    }
+
+    private void sendHeartbeat(byte[] taskToken, String progress) {
+        // Send heartbeat to Temporal to avoid timeout
+        Activity.getExecutionContext().heartbeat(progress);
+        logger.info("Heartbeat sent: {}", progress);
+    }
+
+    private void completeActivity(byte[] taskToken, String result) {
+        // Use completion client to mark the activity as complete
+        WorkflowServiceStubs service = WorkflowServiceStubs.newLocalServiceStubs();
+        WorkflowClient client = WorkflowClient.newInstance(service);
+        ActivityCompletionClient completionClient = client.newActivityCompletionClient();
+        
+        completionClient.complete(taskToken, result);
+        logger.info("Activity completed with result: {}", result);
+    }
+}
+```
+
+This implementation leverages:
+
+- **Heartbeats every 3 seconds**: Progress is sent as heartbeats at regular intervals (10% increments).
+- **Task Completion**: After 10 heartbeats (i.e., 100%), the external system completes the activity.
+
+### Key Points Summary: Temporal Workflows with Java
+
+1. **Signaling & Querying Workflows**:
+   - Signals can be sent from a client to a Workflow or from one Workflow to another using `newExternalWorkflowStub()`.
+   - A Workflow can receive up to 10,000 signals, after which batching signals can help prevent overload.
+   - Handling asynchronous signal actions: Queue signals instead of processing immediately.
+   - Queries can be sent by getting a handle on a Workflow.
+
+2. **Search Attributes**:
+   - **List Filter**: Acts like a SQL-like query to find open Workflow Executions.
+   - **Search Attributes**: Default attributes are created automatically, while custom attributes can be set in client code or via Workflow logic.
+
+3. **Workflow Execution Cancellations**:
+   - **Heartbeats**: Periodic pings sent to indicate progress and Worker health.
+   - **Heartbeat Timeout**: If a timeout occurs due to missed heartbeats, the activity can resume using the last heartbeat data.
+   - **Workflow Cancellations**: Cancellations terminate Workflow gracefully, catching exceptions with `CancelledFailure` for cleanup.
+   - **Non-Cancellable Scopes**: Protect critical operations by defining non-cancellable parts of the Workflow.
+   
+4. **Asynchronous Activity Completion**:
+   - Allows the Activity method to return without marking the Activity as complete.
+   - Useful for long-running, unpredictable, or external system-dependent tasks.
+   - Task Token is a unique identifier for an Activity Execution across machines.
+
+These points capture the essentials of interacting with workflows, signals, queries, search attributes, and cancellation handling within the Temporal platform, with a focus on Java.
+
+### CancellationScope in Temporal with Java 21 and Spring Boot: Practical Example
+
+#### **Scenario**: Payment Processing Workflow with Cleanup in Case of Cancellation
+
+Imagine a payment processing system where the system performs several steps, including charging a customer, updating the order status, and sending a confirmation email. If the user cancels the payment midway through the process, you want to ensure that any reserved resources (e.g., holding inventory or creating an order) are released properly, but the charge should not be applied to the user’s account.
+
+To achieve this, you can use Temporal's **CancellationScope** to define how the system responds to cancellation requests while still performing necessary cleanup actions. We’ll integrate this with **Java 21** and **Spring Boot** following best practices.
+
+### Steps:
+
+1. **Create a Workflow to handle payment processing.**
+2. **Introduce a cancellable scope** for the payment charge.
+3. **Handle cleanup operations** (like rolling back transactions or releasing resources) in case of cancellation.
+4. **Use Spring Boot with Temporal SDK** to define the workflow and activities.
+
+---
+
+### **1. Project Setup (Spring Boot and Temporal SDK)**
+
+Make sure to include the required dependencies in your `build.gradle` or `pom.xml` for Temporal and Spring Boot.
+
+#### `build.gradle`
+```groovy
+plugins {
+    id 'org.springframework.boot' version '3.1.0'
+    id 'io.spring.dependency-management' version '1.1.0'
+    id 'java'
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter'
+    implementation 'io.temporal:temporal-sdk:1.14.0'
+    implementation 'io.temporal:spring-boot-starter-temporal:1.0.0'
+}
+```
+
+---
+
+### **2. Workflow Interface**
+
+We’ll define the `PaymentWorkflow` that will handle the steps for payment processing.
+
+#### `PaymentWorkflow.java`
+```java
+package com.example.payment.workflow;
+
+import io.temporal.workflow.WorkflowInterface;
+import io.temporal.workflow.WorkflowMethod;
+
+@WorkflowInterface
+public interface PaymentWorkflow {
+    @WorkflowMethod
+    void processPayment(String orderId, String customerId, double amount);
+}
+```
+
+---
+
+### **3. Workflow Implementation with Cancellation Scope**
+
+We'll use the `CancellationScope` to wrap the `chargeCustomer` activity, which can be canceled if requested.
+
+#### `PaymentWorkflowImpl.java`
+```java
+package com.example.payment.workflow;
+
+import io.temporal.workflow.CancellationScope;
+import io.temporal.workflow.Workflow;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class PaymentWorkflowImpl implements PaymentWorkflow {
+
+    private static final Logger logger = LoggerFactory.getLogger(PaymentWorkflowImpl.class);
+
+    private final PaymentActivities paymentActivities = Workflow.newActivityStub(PaymentActivities.class);
+
+    @Override
+    public void processPayment(String orderId, String customerId, double amount) {
+        logger.info("Starting payment workflow for Order ID: {}", orderId);
+
+        try {
+            // Create a cancellable scope around charging the customer
+            CancellationScope chargeScope = Workflow.newCancellationScope(() -> {
+                paymentActivities.chargeCustomer(customerId, amount);
+            });
+
+            chargeScope.run();  // Execute the scope (charge the customer)
+            logger.info("Customer charged successfully!");
+
+            // Update the order status after payment succeeds
+            paymentActivities.updateOrderStatus(orderId, "PAID");
+
+            // Send confirmation email to the customer
+            paymentActivities.sendConfirmationEmail(customerId, orderId);
+        } catch (Exception e) {
+            // If any cancellation happens or failure occurs, handle it.
+            logger.error("Payment failed or was canceled for Order ID: {}. Performing cleanup.", orderId);
+
+            // Cleanup the order by marking it as canceled
+            paymentActivities.updateOrderStatus(orderId, "CANCELED");
+        }
+    }
+}
+```
+
+### Key Points in Code:
+
+- **CancellationScope**: The `CancellationScope` is created around the critical step where the customer is charged.
+- **Graceful Handling**: If the workflow is canceled, it catches the exception and performs cleanup activities (e.g., marking the order as canceled).
+
+---
+
+### **4. Activities Interface**
+
+Define the activities involved in the payment processing workflow, such as charging the customer, updating the order status, and sending a confirmation email.
+
+#### `PaymentActivities.java`
+```java
+package com.example.payment.workflow;
+
+import io.temporal.activity.ActivityInterface;
+import io.temporal.activity.ActivityMethod;
+
+@ActivityInterface
+public interface PaymentActivities {
+    @ActivityMethod
+    void chargeCustomer(String customerId, double amount);
+
+    @ActivityMethod
+    void updateOrderStatus(String orderId, String status);
+
+    @ActivityMethod
+    void sendConfirmationEmail(String customerId, String orderId);
+}
+```
+
+---
+
+### **5. Activities Implementation**
+
+Implement the activities. The payment charging activity will simulate a delay, and we'll include logging to track the flow of execution.
+
+#### `PaymentActivitiesImpl.java`
+```java
+package com.example.payment.workflow;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
+@Service
+public class PaymentActivitiesImpl implements PaymentActivities {
+
+    private static final Logger logger = LoggerFactory.getLogger(PaymentActivitiesImpl.class);
+
+    @Override
+    public void chargeCustomer(String customerId, double amount) {
+        try {
+            // Simulate a delay in processing the payment
+            logger.info("Charging customer {} an amount of ${}", customerId, amount);
+            Thread.sleep(5000);  // Simulate external processing time
+            logger.info("Customer {} charged successfully.", customerId);
+        } catch (InterruptedException e) {
+            logger.error("Payment process interrupted for customer {}", customerId);
+            throw new RuntimeException("Payment interrupted");
+        }
+    }
+
+    @Override
+    public void updateOrderStatus(String orderId, String status) {
+        logger.info("Updating order {} status to '{}'", orderId, status);
+        // Simulate order status update in the database
+    }
+
+    @Override
+    public void sendConfirmationEmail(String customerId, String orderId) {
+        logger.info("Sending confirmation email for Order ID: {} to Customer ID: {}", orderId, customerId);
+        // Simulate email sending
+    }
+}
+```
+
+---
+
+### **6. Spring Boot Configuration**
+
+Configure Spring Boot to enable Temporal workers and define the worker that executes the `PaymentWorkflow`.
+
+#### `TemporalConfig.java`
+```java
+package com.example.payment.config;
+
+import com.example.payment.workflow.PaymentActivitiesImpl;
+import com.example.payment.workflow.PaymentWorkflowImpl;
+import io.temporal.worker.WorkerFactory;
+import io.temporal.worker.WorkerFactoryOptions;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class TemporalConfig {
+
+    @Bean
+    public WorkerFactory workerFactory() {
+        WorkerFactoryOptions options = WorkerFactoryOptions.newBuilder().build();
+        return WorkerFactory.newInstance(TemporalWorkflowClient.getService(), options);
+    }
+
+    @Bean
+    public void startWorkers(WorkerFactory factory) {
+        var worker = factory.newWorker("payment-task-queue");
+        worker.registerWorkflowImplementationTypes(PaymentWorkflowImpl.class);
+        worker.registerActivitiesImplementations(new PaymentActivitiesImpl());
+        factory.start();
+    }
+}
+```
+
+---
+
+### **7. Handling Workflow Cancellation**
+
+Finally, we'll simulate the client-side code to start and cancel the workflow execution.
+
+#### `PaymentClient.java`
+```java
+package com.example.payment.client;
+
+import com.example.payment.workflow.PaymentWorkflow;
+import io.temporal.client.WorkflowClient;
+import io.temporal.client.WorkflowOptions;
+import io.temporal.client.WorkflowStub;
+import io.temporal.serviceclient.WorkflowServiceStubs;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
+
+@Component
+public class PaymentClient {
+
+    private static final Logger logger = LoggerFactory.getLogger(PaymentClient.class);
+
+    private final WorkflowClient workflowClient;
+
+    public PaymentClient(WorkflowClient workflowClient) {
+        this.workflowClient = workflowClient;
+    }
+
+    public void startPaymentWorkflow(String orderId, String customerId, double amount) {
+        WorkflowOptions options = WorkflowOptions.newBuilder()
+                .setTaskQueue("payment-task-queue")
+                .build();
+
+        PaymentWorkflow workflow = workflowClient.newWorkflowStub(PaymentWorkflow.class, options);
+
+        WorkflowStub workflowStub = WorkflowStub.fromTyped(workflow);
+
+        try {
+            // Start the workflow asynchronously
+            WorkflowClient.start(workflow::processPayment, orderId, customerId, amount);
+
+            // Simulate a scenario where we cancel the workflow after 3 seconds
+            Thread.sleep(3000);
+            workflowStub.cancel();
+            logger.info("Workflow for Order ID: {} canceled successfully", orderId);
+        } catch (Exception e) {
+            logger.error("Error starting or canceling the workflow", e);
+        }
+    }
+}
+```
+
+---
+
+### **8. Execution**
+
+1. **Start the workflow**: The workflow starts by charging the customer and performing subsequent tasks.
+2. **Cancel the workflow**: The workflow is canceled midway through the payment charge, and cleanup is performed to cancel the order.
+
+---
+
+### **Best Practices Applied**:
+
+- **Graceful Cancellation**: By wrapping the critical `chargeCustomer` operation in a `CancellationScope`, we can ensure that if the operation is canceled, the workflow handles it gracefully and performs any necessary cleanup.
+- **Asynchronous Activities**: The activities are kept short and simple, following the best practice of delegating longer operations to external services.
+- **Spring Boot Integration**: Temporal SDK is seamlessly integrated with Spring Boot, and beans are used to configure the worker and client interactions.
+
+This example demonstrates how you can implement cancellable workflows using Temporal's `CancellationScope` while following best practices for handling workflow cancellation, maintaining Spring Boot structure, and using Java 21 features.
