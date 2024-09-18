@@ -1,6 +1,8 @@
 package com.github.sardul3.temporal_boot.common.activities;
 
+import org.hibernate.annotations.Comment;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 
 import com.github.sardul3.temporal_boot.app.exceptions.BannerLengthTooSmallException;
 
@@ -9,6 +11,7 @@ import io.temporal.failure.ApplicationFailure;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
+@Component
 public class PublishBannerMessageActivitiesImpl implements PublishBannerMessageActivities {
 
     @Override

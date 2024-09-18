@@ -1,3 +1,7 @@
+  ./gradlew bootRun
+  ./gradlew bootRun --args='--spring.profiles.active=publish-banner-worker'
+  ./gradlew bootRun --args='--spring.profiles.active=payment-schedule-worker'
+
 Here’s a **checklist** of **DOs and DON'Ts** when working with Temporal in a Spring Boot application, specifically focusing on code practices to follow:
 
 ### **DOs**

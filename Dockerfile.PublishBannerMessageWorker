@@ -1,0 +1,35 @@
+# Stage 1: Build the JAR file
+FROM eclipse-temurin:21-jdk-alpine as builder
+
+# Set working directory
+WORKDIR /app
+
+# Copy Gradle wrapper and project files
+COPY gradle ./gradle
+COPY gradlew ./
+COPY build.gradle .
+COPY settings.gradle .
+
+# Copy application source code
+COPY src ./src
+
+# Ensure Gradle wrapper is executable
+RUN chmod +x ./gradlew
+
+# Build the JAR file for publish-banner-worker profile
+RUN ./gradlew bootJar --no-daemon -Pprofile=publish-banner-worker
+
+# Stage 2: Run the application with the publish-banner-worker profile
+FROM eclipse-temurin:21-jre-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Copy the built JAR file from the builder stage
+COPY --from=builder /app/build/libs/*.jar worker.jar
+
+# Expose the port for the worker
+EXPOSE 8081
+
+# Set the entry point to run the worker with the publish-banner-worker profile
+ENTRYPOINT ["java", "-jar", "worker.jar", "--spring.profiles.active=publish-banner-worker"]

@@ -21,7 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class TemporalBootApplication implements CommandLineRunner {
 
-	private final WorkerFactory workerFactory;
+	// private final WorkerFactory workerFactory;
 
 	public static void main(String[] args) {
 		SpringApplication.run(TemporalBootApplication.class, args);
@@ -29,11 +29,11 @@ public class TemporalBootApplication implements CommandLineRunner {
 
 	@Override
 	public void run(String... args) throws Exception {
-		if (workerFactory != null) {
-            workerFactory.start();
-            log.info("Temporal workers started successfully.");
-        } else {
-            log.warn("Temporal server is not available. No workers will be started.");
-        }
+		// if (workerFactory != null) {
+        //     workerFactory.start();
+        //     log.info("Temporal workers started successfully.");
+        // } else {
+        //     log.warn("Temporal server is not available. No workers will be started.");
+        // }
 	}
 }

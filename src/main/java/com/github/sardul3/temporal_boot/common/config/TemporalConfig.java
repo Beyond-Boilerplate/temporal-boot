@@ -15,8 +15,10 @@ import io.temporal.worker.WorkerFactory;
 import lombok.extern.slf4j.Slf4j;
 import java.time.Duration;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.EnableRetry;
 import org.springframework.retry.annotation.Retryable;
@@ -47,6 +49,9 @@ import org.springframework.retry.annotation.Retryable;
 @Slf4j
 public class TemporalConfig {
 
+    @Value("${temporal.server}")
+    private String temporalHost;
+    
     /**
      * Creates and configures a {@link WorkflowClient} bean that connects to the Temporal service.
      * The WorkflowClient is used to interact with workflows from the application, allowing
@@ -58,7 +63,7 @@ public class TemporalConfig {
     public WorkflowClient workflowClient() {
         // Connects to local instance of temporal server
         WorkflowServiceStubsOptions stubOptions = WorkflowServiceStubsOptions.newBuilder()
-            .setTarget("localhost:7233") // Replace with your Temporal service target
+            .setTarget(temporalHost) // Replace with your Temporal service target
             .setRpcTimeout(Duration.ofSeconds(30))
             .build();
         
@@ -108,24 +113,26 @@ public class TemporalConfig {
      * @param schedulePaymentActivitiesImpl the implementation of the activities that the worker will execute.
      * @return a configured {@link Worker} that polls the `ScheduledPaymentQueue` task queue.
      */
-    @Bean
-    public Worker worker(WorkerFactory workerFactory, SchedulePaymentActivitiesImpl schedulePaymentActivitiesImpl) {
-        Worker worker = workerFactory.newWorker(TemporalTaskQueues.PAYMENT_SCHEDULE_QUEUE);
+    // @Bean
+    // @Profile("worker")
+    // public Worker worker(WorkerFactory workerFactory, SchedulePaymentActivitiesImpl schedulePaymentActivitiesImpl) {
+    //     Worker worker = workerFactory.newWorker(TemporalTaskQueues.PAYMENT_SCHEDULE_QUEUE);
 
-        // Register the workflow implementation with the worker
-        worker.registerWorkflowImplementationTypes(SchedulePaymentWorkflowImpl.class);
+    //     // Register the workflow implementation with the worker
+    //     worker.registerWorkflowImplementationTypes(SchedulePaymentWorkflowImpl.class);
 
-        // Register the activity implementation with the worker
-        worker.registerActivitiesImplementations(schedulePaymentActivitiesImpl);
+    //     // Register the activity implementation with the worker
+    //     worker.registerActivitiesImplementations(schedulePaymentActivitiesImpl);
 
-        return worker;
-    }
+    //     return worker;
+    // }
 
-    @Bean
-    public Worker bannerNameSubmissionWorker(WorkerFactory workerFactory) {
-        Worker worker = workerFactory.newWorker(TemporalTaskQueues.BANNER_MESSAGE_SUBMISSION_QUEUE);
-        worker.registerWorkflowImplementationTypes(PublishBannerMessageWorkflowImpl.class);
-        worker.registerActivitiesImplementations(new PublishBannerMessageActivitiesImpl());
-        return worker;
-    }
+    // @Bean
+    // @Profile("worker")
+    // public Worker bannerNameSubmissionWorker(WorkerFactory workerFactory) {
+    //     Worker worker = workerFactory.newWorker(TemporalTaskQueues.BANNER_MESSAGE_SUBMISSION_QUEUE);
+    //     worker.registerWorkflowImplementationTypes(PublishBannerMessageWorkflowImpl.class);
+    //     worker.registerActivitiesImplementations(new PublishBannerMessageActivitiesImpl());
+    //     return worker;
+    // }
 }

@@ -1,0 +1,7 @@
+server:
+  port: 8082 # Port for the SchedulePaymentWorker
+
+spring:
+  config:
+    activate:
+      on-profile: payment-schedule-worker

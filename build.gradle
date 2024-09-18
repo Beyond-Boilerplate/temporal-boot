@@ -50,3 +50,17 @@ tasks.named('test') {
 springBoot {
 	mainClass.set('com.github.sardul3.temporal_boot.app.TemporalBootApplication')
 }
+
+task runWorker(type: JavaExec) {
+    group = 'application'
+    description = 'Run the Spring Boot application as a worker using the worker profile'
+
+    classpath = sourceSets.main.runtimeClasspath
+    main = 'com.github.sardul3.temporal_boot.workers.PublishBannerMessageWorker' // Replace with the fully qualified name of your Worker class
+
+    // Pass the worker profile to the application
+    args = ['--spring.profiles.active=worker']
+
+    // Use the same JVM options as you would normally use
+    jvmArgs = ['-Xmx512m', '-Xms256m']
+}

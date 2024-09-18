@@ -3,10 +3,6 @@ spring:
   config:
     activate:
       on-profile: worker
-
-temporal:
-  task-queue: "ScheduledPaymentQueue"
-
   activities:
     createScheduledTask:
       schedule-to-close-timeout: 5m
@@ -24,7 +20,8 @@ temporal:
         max-attempts: 5
         backoff-coefficient: 1.5
 temporal:
-  server: localhost:8080
+  task-queue: "ScheduledPaymentQueue"
+  server: ${TEMPORAL_SERVER:localhost:7233}
   namespace: default
 
 logging:

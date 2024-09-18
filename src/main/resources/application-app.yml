@@ -1,9 +1,10 @@
 spring:
-  profiles:
-    active: "app"
+  config:
+    activate:
+      on-profile: "app"
 
 server:
-  port: 8081
+  port: 8080
 
 temporal:
   task-queue: "ScheduledPaymentQueue"

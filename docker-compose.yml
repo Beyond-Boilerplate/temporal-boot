@@ -1,86 +1,58 @@
-version: '3.5'
+version: '3'
 
 services:
-  postgres:
-    container_name: temporal-postgresql
-    environment:
-      POSTGRES_PASSWORD: temporal
-      POSTGRES_USER: temporal
-      POSTGRES_DB: temporal
-    image: postgres:13
-    networks:
-      - temporal-network
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-
   temporal:
-    container_name: temporal
-    depends_on:
-      - postgres
-    environment:
-      - DB=postgres
-      - DB_PORT=5432
-      - POSTGRES_USER=temporal
-      - POSTGRES_PWD=temporal
-      - POSTGRES_SEEDS=postgres
-      - TEMPORAL_ADMINSERV_PORT=7233
-      - TEMPORAL_BROADCAST_ADDRESS=temporal
-      - LOG_LEVEL=debug
-      - DYNAMIC_CONFIG_FILE_PATH=/etc/temporal/config/defaults.yaml
-
-    image: temporalio/auto-setup:1.16.0
+    image: temporalio/auto-setup:1.12.0
+    ports:
+      - "7233:7233" # Temporal service port
     networks:
       - temporal-network
-    ports:
-      - "7233:7233"
 
-  temporal-ui:
-    container_name: temporal-ui
-    depends_on:
-      - temporal
-    environment:
-      - TEMPORAL_ADDRESS=temporal:7233
-      - TEMPORAL_CORS_ORIGINS=http://localhost:3000
-    image: temporalio/ui:2.5.0
-    networks:
-      - temporal-network
-    ports:
-      - "8080:8080"
-
-  myapp:
+  app:
     build:
-      context: .
-      dockerfile: Dockerfile.app
+      context: ./                   # Path to the directory containing Dockerfile for app
+      dockerfile: Dockerfile.app                # Name of the Dockerfile for app
+    ports:
+      - "8083:8083" # Port for the API/app
     environment:
       - SPRING_PROFILES_ACTIVE=app
-      - TEMPORAL_SERVER=ui:7233
-    depends_on:
-      - temporal
+      - TEMPORAL_SERVER=temporal:7233
     networks:
       - temporal-network
+
+    depends_on:
+      - temporal
+
+  publish-banner-worker:
+    build:
+      context: ./ # Path to the directory containing Dockerfile for publish-banner-worker
+      dockerfile: Dockerfile.PublishBannerMessageWorker     # Name of the Dockerfile for publish-banner-worker
     ports:
-      - "8081:8080"
+      - "8081:8081" # Port for publish-banner-worker
+    environment:
+      - SPRING_PROFILES_ACTIVE=publish-banner-worker
+      # - TEMPORAL_SERVER='temporal:7233'
     network_mode: host
 
 
-  # myapp-worker:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile.worker
-  #   environment:
-  #     - SPRING_PROFILES_ACTIVE=worker
-  #     - TEMPORAL_SERVER=ui7:7233
-  #   depends_on:
-  #     - temporal
-  #   networks:
-  #     - temporal-network
+    depends_on:
+      - temporal
+
+  schedule-payment-worker:
+    build:
+      context: ./ # Path to the directory containing Dockerfile for schedule-payment-worker
+      dockerfile: Dockerfile.SchedulePaymentWorker   # Name of the Dockerfile for schedule-payment-worker
+    ports:
+      - "8082:8082" # Port for schedule-payment-worker
+    environment:
+      - SPRING_PROFILES_ACTIVE=payment-schedule-worker
+      # - TEMPORAL_SERVER='temporal:7233'
+    network_mode: host
+
+    depends_on:
+      - temporal
+
 
 networks:
   temporal-network:
     driver: bridge
-
-volumes:
-  postgres-data:
-    driver: local

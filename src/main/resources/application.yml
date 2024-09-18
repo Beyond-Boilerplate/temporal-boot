@@ -13,6 +13,6 @@ spring:
     hibernate:
       ddl-auto: update
 temporal:
-  server: ${TEMPORAL_SERVER:localhost:8080}
+  server: ${TEMPORAL_SERVER:localhost:7233}
   namespace: default
 

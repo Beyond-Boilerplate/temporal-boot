@@ -1,0 +1,7 @@
+server:
+  port: 8081 # Port for the PublishBannerMessageWorker
+
+spring:
+  config:
+    activate:
+      on-profile: publish-banner-worker
