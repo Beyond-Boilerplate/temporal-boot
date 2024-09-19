@@ -5,6 +5,7 @@ import com.github.sardul3.temporal_boot.common.activities.PublishBannerMessageAc
 import com.github.sardul3.temporal_boot.common.activities.SchedulePaymentActivities;
 import com.github.sardul3.temporal_boot.common.activities.SchedulePaymentActivitiesImpl;
 import com.github.sardul3.temporal_boot.common.config.TemporalConfigProperties;
+import com.github.sardul3.temporal_boot.common.models.PaymentSchedulePayload;
 import com.github.sardul3.temporal_boot.common.models.Transaction;
 
 import io.temporal.activity.ActivityOptions;
@@ -37,12 +38,13 @@ public class SchedulePaymentWorkflowImpl implements SchedulePaymentWorkflow {
 
 
     @Override
-    public Transaction schedulePayment(String from, String to, double amount, LocalDateTime scheduledDate) {
+    public Transaction schedulePayment(PaymentSchedulePayload payload) {
+        
         // Step 1: Validate the payment amount via an activity
-        noRetryActivities.validateAmount(amount);
+        noRetryActivities.validateAmount(payload.getAmount());
 
         // Step 2: Create a scheduled task for logging or record purposes
-        activities.createScheduledTask(from, to, amount, scheduledDate);
+        activities.createScheduledTask(payload.getFrom(), payload.getTo(), payload.getAmount(), payload.getScheduledDate());
 
         // Step 3: Sleep until the scheduled time 
         //ALERT: do not use system time such as LocalDateTime (side-effect)
@@ -50,7 +52,7 @@ public class SchedulePaymentWorkflowImpl implements SchedulePaymentWorkflow {
 
         long currentTimeMillis = Workflow.currentTimeMillis();  // Use workflow-provided time
         LocalDateTime workflowNow = LocalDateTime.ofInstant(Instant.ofEpochMilli(currentTimeMillis), ZoneId.systemDefault());
-        Duration delay = Duration.between(workflowNow, scheduledDate);
+        Duration delay = Duration.between(workflowNow, payload.getScheduledDate());
 
         if (!delay.isNegative()) {
             // blocking call (await or sleep)
@@ -68,7 +70,7 @@ public class SchedulePaymentWorkflowImpl implements SchedulePaymentWorkflow {
         }
 
         // Step 4: Execute the payment once the scheduled time has arrived
-        return activities.runSchedulePayment(from, to, amount, scheduledDate);
+        return activities.runSchedulePayment(payload.getFrom(), payload.getTo(), payload.getAmount(), payload.getScheduledDate());
     }
 
     @Override

@@ -12,6 +12,16 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always  # Always show detailed health information in the response
+      probes:
+        enabled: true
 
 temporal-config:
   server: ${TEMPORAL_SERVER:localhost:7233}

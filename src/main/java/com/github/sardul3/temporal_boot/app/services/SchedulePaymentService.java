@@ -3,6 +3,7 @@ package com.github.sardul3.temporal_boot.app.services;
 import com.github.sardul3.temporal_boot.api.dtos.SchedulePaymentRequest;
 import com.github.sardul3.temporal_boot.api.dtos.ScheduledPaymentConfirmation;
 import com.github.sardul3.temporal_boot.common.config.TemporalConfigProperties;
+import com.github.sardul3.temporal_boot.common.models.PaymentSchedulePayload;
 import com.github.sardul3.temporal_boot.common.utils.TemporalConstants;
 import com.github.sardul3.temporal_boot.common.utils.WorkflowIdGenerator;
 import com.github.sardul3.temporal_boot.common.workflows.SchedulePaymentWorkflow;
@@ -33,7 +34,9 @@ public class SchedulePaymentService {
         String workflowId = computeWorkflowId();
         LocalDateTime scheduledDateTime = convertDateTimeForSchedule(request.getWhen());
         SchedulePaymentWorkflow workflow = buildWorkflow(workflowId);
-        WorkflowClient.start(workflow::schedulePayment, request.getFrom(), request.getTo(), request.getAmount(), scheduledDateTime);
+
+        ActivityOptions activityOptions =  createActivityOptions(TemporalConstants.Activities.SCHEDULE_PAYMENT_ACTIVITIES);
+        WorkflowClient.start(workflow::schedulePayment, new PaymentSchedulePayload(request.getFrom(), request.getTo(), request.getAmount(), scheduledDateTime));
         return buildConfirmation(workflowId);
     }
 
@@ -56,19 +59,7 @@ public class SchedulePaymentService {
     }
 
     private SchedulePaymentWorkflow buildWorkflow(String workflowId) {
-        String currentVersion = workflowConfig.getCurrentVersions().getWorkflows().get(TemporalConstants.Workflows.PAYMENT_SCHEDULING_WORKFLOW);
-        String taskQueue = workflowConfig.getWorkflows()
-                                    .get(TemporalConstants.Workflows.PAYMENT_SCHEDULING_WORKFLOW)
-                                    .getVersions().get(currentVersion)
-                                    .getTaskQueue();
-        return workflowClient.newWorkflowStub(SchedulePaymentWorkflow.class,
-                WorkflowOptions.newBuilder()
-                        .setTaskQueue(taskQueue)
-                        .setWorkflowId(workflowId)
-                        .setWorkflowIdReusePolicy(
-                                WorkflowIdReusePolicy.WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY
-                        )
-                        .build());
+        return workflowClient.newWorkflowStub(SchedulePaymentWorkflow.class, createWorkflowOptions(workflowId));
     }
 
     private String computeWorkflowId() {
@@ -92,6 +83,20 @@ public class SchedulePaymentService {
         ScheduledPaymentConfirmation confirmation = new ScheduledPaymentConfirmation();
         confirmation.setPaymentScheduleId(workflowId);
         return confirmation;
+    }
+
+    private WorkflowOptions createWorkflowOptions(String workflowId) {
+        String currentVersion = workflowConfig.getCurrentVersions().getWorkflows().get(TemporalConstants.Workflows.PAYMENT_SCHEDULING_WORKFLOW);
+        TemporalConfigProperties.WorkflowConfig workflowConfig = this.workflowConfig.getWorkflows().get(TemporalConstants.Workflows.PAYMENT_SCHEDULING_WORKFLOW);
+        TemporalConfigProperties.WorkflowVersionConfig versionConfig = workflowConfig.getVersions().get(currentVersion);
+
+        return WorkflowOptions.newBuilder()
+                .setTaskQueue(versionConfig.getTaskQueue())
+                .setWorkflowId(workflowId)
+                .setWorkflowIdReusePolicy(WorkflowIdReusePolicy.WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY)
+                .setWorkflowRunTimeout(versionConfig.getRunTimeout())
+                .setWorkflowExecutionTimeout(versionConfig.getExecutionTimeout())
+                .build();
     }
 
     private ActivityOptions createActivityOptions(String activityName) {

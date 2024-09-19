@@ -32,6 +32,7 @@ dependencies {
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	testImplementation 'org.junit.vintage:junit-vintage-engine:5.9.0'
  	implementation 'org.springframework.retry:spring-retry:2.0.3'
+	implementation "org.springframework.boot:spring-boot-starter-actuator"
 
 	// DB related
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
