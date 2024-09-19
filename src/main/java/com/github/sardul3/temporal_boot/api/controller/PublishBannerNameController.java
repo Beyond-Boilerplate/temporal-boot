@@ -16,10 +16,12 @@ import com.github.sardul3.temporal_boot.api.dtos.BannerNameResponse;
 import com.github.sardul3.temporal_boot.app.services.PublishBannerNameService;
 
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping("/api/banner/name")
 @AllArgsConstructor
+@Slf4j
 public class PublishBannerNameController {
     
     private final PublishBannerNameService publishBannerNameService;
@@ -27,9 +29,9 @@ public class PublishBannerNameController {
     @PostMapping
     public ResponseEntity<BannerNameResponse> submitNewBannerNameRequest(
         @RequestBody BannerNameRequest request,
-        @RequestHeader(required = false) String xCoorrelationId
+        @RequestHeader(name = "X-Correlation-ID" ,required = false) String xCorrelationId
     ) {
-        BannerNameResponse response = publishBannerNameService.buildAndStartWorkflow(request, xCoorrelationId);
+        BannerNameResponse response = publishBannerNameService.buildAndStartWorkflow(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 

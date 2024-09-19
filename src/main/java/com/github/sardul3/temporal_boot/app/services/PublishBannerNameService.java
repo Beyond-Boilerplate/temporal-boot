@@ -1,12 +1,12 @@
 package com.github.sardul3.temporal_boot.app.services;
 
-import java.util.UUID;
-
 import org.springframework.stereotype.Service;
 
 import com.github.sardul3.temporal_boot.api.dtos.BannerNameRequest;
 import com.github.sardul3.temporal_boot.api.dtos.BannerNameResponse;
-import com.github.sardul3.temporal_boot.common.config.TemporalTaskQueues;
+import com.github.sardul3.temporal_boot.common.config.TemporalConfigProperties;
+import com.github.sardul3.temporal_boot.common.utils.TemporalConstants;
+import com.github.sardul3.temporal_boot.common.utils.WorkflowIdGenerator;
 import com.github.sardul3.temporal_boot.common.workflows.PublishBannerMessageWorkflow;
 
 import io.temporal.client.WorkflowClient;
@@ -20,9 +20,14 @@ public class PublishBannerNameService {
     private final String WORKFLOW_ID_PREFIX = "PBN-";
     
     private WorkflowClient workflowClient;
+    private final TemporalConfigProperties workflowConfig;
 
-    public BannerNameResponse buildAndStartWorkflow(BannerNameRequest request, String correlationId) {
-        String workflowId = computeWorkflowId(correlationId);
+
+    public BannerNameResponse buildAndStartWorkflow(BannerNameRequest request) {
+        // Decision :  Seperating correlationID and workflowID generation
+        // Why      :  Can result in ALREADY_EXISTS error if same correlationID is sent
+        String workflowId = computeWorkflowId();
+
         PublishBannerMessageWorkflow workflow = buildWorkflow(workflowId);
         WorkflowClient.start(workflow::createAndPublishBannerMessage, request.getMessage());
         return buildResponse(workflowId);
@@ -36,18 +41,21 @@ public class PublishBannerNameService {
     }
 
     private PublishBannerMessageWorkflow buildWorkflow(String workflowId) {
+        String currentVersion = workflowConfig.getCurrentVersions().getWorkflows().get(TemporalConstants.Workflows.PUBLISH_BANNER_MESSAGE_WORKFLOW);
+        String taskQueue = workflowConfig.getWorkflows()
+                                    .get(TemporalConstants.Workflows.PUBLISH_BANNER_MESSAGE_WORKFLOW)
+                                    .getVersions().get(currentVersion)
+                                    .getTaskQueue();
         return workflowClient.newWorkflowStub(PublishBannerMessageWorkflow.class,
                 WorkflowOptions.newBuilder()
-                        .setTaskQueue(TemporalTaskQueues.BANNER_MESSAGE_SUBMISSION_QUEUE)
-                        .setWorkflowId(WORKFLOW_ID_PREFIX + workflowId)
+                        .setTaskQueue(taskQueue)
+                        .setWorkflowId(workflowId)
                         .build());
     }    
 
-    private String computeWorkflowId(String correlationId) {
-        if(correlationId != null && !correlationId.isBlank()) {
-            return correlationId;
-        }
-        return UUID.randomUUID().toString();
+    private String computeWorkflowId() {
+        
+        return  WorkflowIdGenerator.generateWorkflowId(TemporalConstants.Workflows.PUBLISH_BANNER_MESSAGE_WORKFLOW, workflowConfig);
     }
 
     private BannerNameResponse buildResponse(String workflowId) {

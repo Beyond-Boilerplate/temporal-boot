@@ -23,7 +23,7 @@ public class SchedulePaymentController {
             @RequestBody SchedulePaymentRequest request,
             @RequestHeader(value = "X-Correlation-ID", required = false) String xCorrelationId
             ) {
-        ScheduledPaymentConfirmation confirmation = schedulePaymentService.buildAndStartWorkflow(request, xCorrelationId);
+        ScheduledPaymentConfirmation confirmation = schedulePaymentService.buildAndStartWorkflow(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(confirmation);
     }
 

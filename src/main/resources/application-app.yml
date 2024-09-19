@@ -9,13 +9,6 @@ server:
 temporal:
   task-queue: "ScheduledPaymentQueue"
 
-  # App-specific temporal configuration
-  workflows:
-    payment:
-      version: v1
-      execution-timeout: 30m
-      run-timeout: 15m
-
 logging:
   level:
     root: INFO

@@ -49,9 +49,6 @@ import org.springframework.retry.annotation.Retryable;
 @Slf4j
 public class TemporalConfig {
 
-    @Value("${temporal.server}")
-    private String temporalHost;
-    
     /**
      * Creates and configures a {@link WorkflowClient} bean that connects to the Temporal service.
      * The WorkflowClient is used to interact with workflows from the application, allowing
@@ -60,10 +57,9 @@ public class TemporalConfig {
      * @return a new instance of {@link WorkflowClient} connected to the local Temporal service.
      */
     @Bean
-    public WorkflowClient workflowClient() {
-        // Connects to local instance of temporal server
+    public WorkflowClient workflowClient(TemporalConfigProperties temporalConfigProperties) {
         WorkflowServiceStubsOptions stubOptions = WorkflowServiceStubsOptions.newBuilder()
-            .setTarget(temporalHost) // Replace with your Temporal service target
+            .setTarget(temporalConfigProperties.getServer()) 
             .setRpcTimeout(Duration.ofSeconds(30))
             .build();
         
@@ -71,10 +67,10 @@ public class TemporalConfig {
         WorkflowServiceStubs service = WorkflowServiceStubs.newServiceStubs(stubOptions);
 
         TemporalNameSpaceManagement namespaceHelper = new TemporalNameSpaceManagement(service);
-        namespaceHelper.ensureNamespaceExists("learning-temporal-boot", 3);  // Retention period of 3 days
+        namespaceHelper.namespace(temporalConfigProperties.getNamespace(), 30);  // Retention period of 30 days
 
         WorkflowClientOptions clientOptions = WorkflowClientOptions.newBuilder()
-            .setNamespace("learning-temporal-boot")
+            .setNamespace(temporalConfigProperties.getNamespace())
             .build();
         
         log.info("Connected to Temporal server successfully.");
@@ -96,43 +92,4 @@ public class TemporalConfig {
         }
         return WorkerFactory.newInstance(workflowClient);
     }
-
-    /**
-     * Creates and configures a {@link Worker} bean for polling the `ScheduledPaymentQueue` task queue.
-     * The worker registers the workflow implementation (SchedulePaymentWorkflowImpl) and activity implementation
-     * (SchedulePaymentActivitiesImpl) so that when tasks are received on the queue, the appropriate workflow
-     * or activity is executed.
-     *
-     * <p><b>Author's Intent:</b></p>
-     * This method ensures that the worker is properly configured to handle both the workflow
-     * and activities for the `ScheduledPaymentQueue`. It decouples the responsibility of
-     * executing workflows and activities by delegating them to separate components,
-     * thereby promoting maintainability and testability.
-     *
-     * @param workerFactory the WorkerFactory that creates and manages the worker.
-     * @param schedulePaymentActivitiesImpl the implementation of the activities that the worker will execute.
-     * @return a configured {@link Worker} that polls the `ScheduledPaymentQueue` task queue.
-     */
-    // @Bean
-    // @Profile("worker")
-    // public Worker worker(WorkerFactory workerFactory, SchedulePaymentActivitiesImpl schedulePaymentActivitiesImpl) {
-    //     Worker worker = workerFactory.newWorker(TemporalTaskQueues.PAYMENT_SCHEDULE_QUEUE);
-
-    //     // Register the workflow implementation with the worker
-    //     worker.registerWorkflowImplementationTypes(SchedulePaymentWorkflowImpl.class);
-
-    //     // Register the activity implementation with the worker
-    //     worker.registerActivitiesImplementations(schedulePaymentActivitiesImpl);
-
-    //     return worker;
-    // }
-
-    // @Bean
-    // @Profile("worker")
-    // public Worker bannerNameSubmissionWorker(WorkerFactory workerFactory) {
-    //     Worker worker = workerFactory.newWorker(TemporalTaskQueues.BANNER_MESSAGE_SUBMISSION_QUEUE);
-    //     worker.registerWorkflowImplementationTypes(PublishBannerMessageWorkflowImpl.class);
-    //     worker.registerActivitiesImplementations(new PublishBannerMessageActivitiesImpl());
-    //     return worker;
-    // }
 }

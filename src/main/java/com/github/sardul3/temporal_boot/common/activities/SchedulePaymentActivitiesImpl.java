@@ -5,7 +5,6 @@ import com.github.sardul3.temporal_boot.common.models.Transaction;
 
 import io.temporal.activity.Activity;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;

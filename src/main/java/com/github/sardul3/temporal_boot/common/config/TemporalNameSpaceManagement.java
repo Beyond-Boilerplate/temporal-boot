@@ -21,7 +21,7 @@ public class TemporalNameSpaceManagement {
      * @param namespace The namespace to check or create.
      * @param retentionDays The retention period in days for the workflow execution event history.
      */
-    public void ensureNamespaceExists(String namespace, int retentionDays) {
+    public void namespace(String namespace, int retentionDays) {
         if (!doesNamespaceExist(namespace)) {
             log.info("Namespace '{}' does not exist. Creating it...", namespace);
             createNamespace(namespace, retentionDays);

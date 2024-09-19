@@ -3,9 +3,10 @@ package com.github.sardul3.temporal_boot.common.workflows;
 import com.github.sardul3.temporal_boot.app.exceptions.TransactionCancelledException;
 import com.github.sardul3.temporal_boot.common.activities.PublishBannerMessageActivities;
 import com.github.sardul3.temporal_boot.common.activities.SchedulePaymentActivities;
+import com.github.sardul3.temporal_boot.common.activities.SchedulePaymentActivitiesImpl;
+import com.github.sardul3.temporal_boot.common.config.TemporalConfigProperties;
 import com.github.sardul3.temporal_boot.common.models.Transaction;
 
-import io.temporal.activity.Activity;
 import io.temporal.activity.ActivityOptions;
 import io.temporal.common.RetryOptions;
 import io.temporal.workflow.Workflow;
@@ -30,6 +31,7 @@ public class SchedulePaymentWorkflowImpl implements SchedulePaymentWorkflow {
         .setStartToCloseTimeout(Duration.ofMinutes(30))
         .setRetryOptions(RetryOptions.newBuilder().setMaximumAttempts(1).build()) // No retry
         .build();
+    
 
     SchedulePaymentActivities noRetryActivities = Workflow.newActivityStub(SchedulePaymentActivities.class, noRetryOptions);
 

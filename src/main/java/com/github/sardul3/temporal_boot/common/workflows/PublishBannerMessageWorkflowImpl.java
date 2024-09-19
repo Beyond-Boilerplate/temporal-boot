@@ -7,7 +7,6 @@ import org.slf4j.Logger;
 import com.github.sardul3.temporal_boot.common.activities.PublishBannerMessageActivities;
 
 import io.temporal.activity.ActivityOptions;
-import io.temporal.workflow.ActivityStub;
 import io.temporal.workflow.Async;
 import io.temporal.workflow.Promise;
 import io.temporal.workflow.Workflow;

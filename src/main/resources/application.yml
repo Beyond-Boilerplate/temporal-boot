@@ -12,7 +12,80 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-temporal:
+
+temporal-config:
   server: ${TEMPORAL_SERVER:localhost:7233}
-  namespace: default
+  namespace: learn-temp-boot
+  workflows:
+    paymentSchedulingWorkflow:
+      prefix: "PSW" # IN_USE
+      keyGenerationStrategy: "UUID" # IN_USE
+      versions:
+        v1:
+          executionTimeout: 3600s
+          runTimeout: 7200s
+          taskQueue: "PAYMENT_SCHEDULE_QUEUE"
+    publishBannerMessageWorkflow:
+      prefix: "PBW" # IN_USE
+      keyGenerationStrategy: "UUID" # IN_USE
+      versions:
+        default:
+          executionTimeout: 3600s
+          runTimeout: 7200s
+          taskQueue: "BANNER_MESSAGE_QUEUE"
+
+  activities:
+    publishBannerMessageActivities:
+      versions:
+        default:
+          scheduleToCloseTimeout: 300s
+          startToCloseTimeout: 180s
+          retry:
+            initialInterval: 1s
+            maxAttempts: 3
+            backoffCoefficient: 2.0
+    schedulePaymentActivities:
+      versions:
+        v1:
+          scheduleToCloseTimeout: 600s
+          startToCloseTimeout: 300s
+          retry:
+            initialInterval: 5s
+            maxAttempts: 5
+            backoffCoefficient: 2.0
+    schedulePaymentActivitiesNoRetry: 
+      versions:
+        v1:
+          scheduleToCloseTimeout: 1800s  
+          startToCloseTimeout: 1800s      
+          retry:
+            initialInterval: 1s
+            maxAttempts: 1  
+            backoffCoefficient: 1.0
+
+  workers:
+    publishBannerWorker:
+      taskQueue: "BANNER_MESSAGE_QUEUE" # IN_USE
+      workflows:
+        - publishBannerMessageWorkflow
+      activities:
+        - publishBannerMessageActivities
+    paymentScheduleWorker:
+      taskQueue: "PAYMENT_SCHEDULE_QUEUE" # IN_USE
+      workflows:
+        - paymentSchedulingWorkflow
+      activities:
+        - schedulePaymentActivities
+
+  current-versions:
+    workflows:
+      paymentSchedulingWorkflow: v1 # IN_USE
+      publishBannerMessageWorkflow: default # IN_USE
+    activities:
+      schedulePaymentActivitiesNoRetry: v1
+      schedulePaymentActivities: v1
+      publishBannerMessageActivities: default
+    workers:
+      paymentScheduleWorker: v1
+      publishBannerWorker: default
 
