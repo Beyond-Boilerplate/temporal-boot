@@ -909,3 +909,190 @@ public class PaymentClient {
 - **Spring Boot Integration**: Temporal SDK is seamlessly integrated with Spring Boot, and beans are used to configure the worker and client interactions.
 
 This example demonstrates how you can implement cancellable workflows using Temporal's `CancellationScope` while following best practices for handling workflow cancellation, maintaining Spring Boot structure, and using Java 21 features.
+
+# Future Improvement(s)
+
+Improving a Temporal workflow codebase involves enhancing various aspects of the workflow's structure, reliability, performance, and maintainability. Here are some key areas where you can optimize the Temporal aspects of your codebase:
+
+### 1. **Idempotency and Retry Policies**
+   - **Idempotency**: Ensure all activities are idempotent, meaning that they can be retried without unintended side effects. For example, if an activity writes to a database or publishes a message, you should include checks to ensure the same message or record isn’t duplicated on retries.
+   - **Custom Retry Policies**: Use `RetryOptions` to customize retry behavior. Temporal automatically retries failed activities and workflows, but you can fine-tune the number of retry attempts, intervals between retries, and backoff strategies.
+
+   Example:
+   ```java
+   ActivityOptions options = ActivityOptions.newBuilder()
+       .setRetryOptions(RetryOptions.newBuilder()
+           .setMaximumAttempts(3)
+           .setInitialInterval(Duration.ofSeconds(2))
+           .setMaximumInterval(Duration.ofMinutes(5))
+           .setBackoffCoefficient(2.0)
+           .build())
+       .setStartToCloseTimeout(Duration.ofMinutes(5))
+       .build();
+   ```
+
+### 2. **Workflow and Activity Timeouts**
+   - **Use Timeouts for Workflows and Activities**: Always set appropriate timeouts (start-to-close, schedule-to-close, etc.) for activities and workflows to ensure that they don’t run indefinitely if something goes wrong.
+   
+   Example:
+   ```java
+   WorkflowOptions workflowOptions = WorkflowOptions.newBuilder()
+       .setTaskQueue("PAYMENT_TASK_QUEUE")
+       .setWorkflowExecutionTimeout(Duration.ofHours(1))
+       .setWorkflowRunTimeout(Duration.ofMinutes(30))
+       .build();
+   ```
+
+### 3. **Versioning**
+   - **Activity and Workflow Versioning**: Temporal allows you to update workflows without breaking compatibility with currently running workflows. By using `Workflow.getVersion()`, you can version your workflow logic and ensure backward compatibility.
+
+   Example:
+   ```java
+   int version = Workflow.getVersion("PaymentProcessing-v1", Workflow.DEFAULT_VERSION, 2);
+   if (version == 1) {
+       // Old logic
+   } else {
+       // New logic
+   }
+   ```
+
+### 4. **Testing**
+   - **Unit Tests for Workflows and Activities**: Use Temporal's testing framework to test your workflows and activities locally. This allows you to mock dependencies, validate business logic, and ensure workflow behavior without interacting with a real Temporal server.
+   
+   Example:
+   ```java
+   @Test
+   public void testSchedulePaymentWorkflow() {
+       TestWorkflowEnvironment testEnv = TestWorkflowEnvironment.newInstance();
+       Worker worker = testEnv.newWorker("PAYMENT_TASK_QUEUE");
+       worker.registerWorkflowImplementationTypes(SchedulePaymentWorkflowImpl.class);
+       
+       SchedulePaymentWorkflow workflow = testEnv.getWorkflowClient()
+           .newWorkflowStub(SchedulePaymentWorkflow.class, WorkflowOptions.newBuilder()
+               .setTaskQueue("PAYMENT_TASK_QUEUE")
+               .build());
+
+       testEnv.start();
+       
+       PaymentSchedulePayload payload = new PaymentSchedulePayload("fromAccount", "toAccount", 100.0, LocalDateTime.now().plusMinutes(5));
+       Transaction result = workflow.schedulePayment(payload);
+       assertNotNull(result);
+       
+       testEnv.close();
+   }
+   ```
+
+### 5. **Activity Heartbeats**
+   - **Heartbeat for Long-Running Activities**: If your activities are long-running (e.g., processing payments, downloading large files), use heartbeats to report the progress back to the Temporal server. This helps detect activity failures and retries quickly.
+   
+   Example:
+   ```java
+   @Override
+   public Transaction runSchedulePayment(String from, String to, double amount, LocalDateTime scheduledDate) {
+       // Simulate long-running task
+       for (int i = 0; i < 10; i++) {
+           Workflow.getActivityExecutionContext().heartbeat(i);
+           // Simulate processing
+           Thread.sleep(1000);
+       }
+       return new Transaction();
+   }
+   ```
+
+### 6. **Use Signals for External Interaction**
+   - **Signals for External Events**: Use Temporal signals to handle external events or user inputs. For instance, if a user cancels a transaction, you can send a signal to the workflow to cancel the payment.
+   
+   Example:
+   ```java
+   @Override
+   public void fastForwardSignal(String scheduleId) {
+       this.fastForward = true;
+   }
+
+   // Signal from external system
+   WorkflowClient.newWorkflowStub(SchedulePaymentWorkflow.class, workflowId).fastForwardSignal("12345");
+   ```
+
+### 7. **Dynamic Configuration with Workflow Execution Parameters**
+   - **Pass Configurations Dynamically**: Pass dynamic configurations (like retry policies, timeouts, thresholds) when starting workflows to make them more flexible and reusable.
+
+   Example:
+   ```java
+   WorkflowOptions options = WorkflowOptions.newBuilder()
+       .setTaskQueue("PAYMENT_TASK_QUEUE")
+       .setWorkflowExecutionTimeout(Duration.ofHours(1))
+       .build();
+
+   SchedulePaymentWorkflow workflow = WorkflowClient.newWorkflowStub(SchedulePaymentWorkflow.class, options);
+   ```
+
+### 8. **Task Queue Segregation**
+   - **Separate Task Queues**: Use separate task queues for different activities and workflows based on their priorities or SLAs. For example, you could have one queue for high-priority workflows and another for background processing.
+
+   Example:
+   ```java
+   WorkflowOptions highPriorityOptions = WorkflowOptions.newBuilder()
+       .setTaskQueue("HIGH_PRIORITY_TASK_QUEUE")
+       .build();
+   ```
+
+### 9. **Graceful Workflow Shutdowns**
+   - **Handle Workflow Shutdowns Gracefully**: Workflows can be interrupted by server restarts or failovers. Implement graceful shutdown behavior to handle in-flight requests during shutdown.
+
+   Example:
+   ```java
+   @Override
+   public void fastForwardSignal(String scheduleId) {
+       this.fastForward = true;
+       // Implement logic to stop processing safely
+   }
+   ```
+
+### 10. **Advanced Observability (Metrics and Logs)**
+   - **Enable Metrics**: Use Temporal’s built-in metrics to monitor workflow performance, activity success rates, and failure rates.
+   - **Custom Logging**: Add custom logs for critical events like activity retries, signals received, workflow cancellations, etc., to improve observability.
+
+   Example:
+   ```java
+   Workflow.getLogger(SchedulePaymentWorkflowImpl.class).info("Payment scheduled with ID: {}", paymentId);
+   ```
+
+### 11. **Data Consistency and Sagas for Distributed Transactions**
+   - **Use Sagas for Distributed Transactions**: If your workflow involves multiple distributed systems (e.g., payment gateways, inventory services), consider implementing the **Saga Pattern** for compensating transactions if one step fails.
+
+   Example:
+   ```java
+   try {
+       // Execute a series of distributed activities
+       activityA();
+       activityB();
+       activityC();
+   } catch (Exception e) {
+       // Perform compensation for activities A and B
+       compensateActivityA();
+       compensateActivityB();
+   }
+   ```
+
+### 12. **Use Activity Stubs for Dynamic Activity Selection**
+   - **Dynamic Activity Stubbing**: You can dynamically choose activity implementations based on runtime conditions or configurations.
+   
+   Example:
+   ```java
+   SchedulePaymentActivities dynamicActivities = Workflow.newActivityStub(SchedulePaymentActivities.class, dynamicActivityOptionsMap.get("schedulePaymentActivities"));
+   ```
+
+### 13. **Temporal Worker Scalability**
+   - **Worker Scaling**: Ensure that your Temporal workers are stateless and can be horizontally scaled to handle spikes in task load. Use Kubernetes or other orchestration tools to dynamically scale the workers.
+
+### Summary of Key Improvements:
+- **Idempotency and Retry Options**: Ensure all activities are idempotent and configure custom retry policies for workflows and activities.
+- **Versioning**: Use Temporal’s versioning features to upgrade workflows without disrupting ongoing executions.
+- **Activity Timeouts and Heartbeats**: Implement timeouts and heartbeats for long-running activities.
+- **Task Queue Segregation**: Split task queues based on the nature and priority of tasks.
+- **Signal Handling**: Use signals to interact with external events and handle graceful shutdowns.
+- **Advanced Testing**: Use Temporal’s testing framework to validate your workflows and activities locally.
+- **Saga Pattern for Distributed Transactions**: Implement compensating actions for failed distributed transactions.
+- **Scalability**: Ensure your workers are stateless and can be easily scaled horizontally.
+
+These optimizations will improve the robustness, scalability, and maintainability of your Temporal workflow codebase.

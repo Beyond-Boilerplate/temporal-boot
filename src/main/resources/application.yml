@@ -32,7 +32,7 @@ temporal-config:
       keyGenerationStrategy: "UUID" # IN_USE
       versions:
         v1:
-          executionTimeout: 3600s
+          executionTimeout: 60s
           runTimeout: 7200s
           taskQueue: "PAYMENT_SCHEDULE_QUEUE"
     publishBannerMessageWorkflow:
@@ -40,7 +40,7 @@ temporal-config:
       keyGenerationStrategy: "UUID" # IN_USE
       versions:
         default:
-          executionTimeout: 3600s
+          executionTimeout: 60s
           runTimeout: 7200s
           taskQueue: "BANNER_MESSAGE_QUEUE"
 

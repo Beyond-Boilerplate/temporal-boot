@@ -5,6 +5,7 @@ import com.github.sardul3.temporal_boot.api.dtos.ScheduledPaymentConfirmation;
 import com.github.sardul3.temporal_boot.common.config.TemporalConfigProperties;
 import com.github.sardul3.temporal_boot.common.models.PaymentSchedulePayload;
 import com.github.sardul3.temporal_boot.common.utils.TemporalConstants;
+import com.github.sardul3.temporal_boot.common.utils.TemporalOptionsHelper;
 import com.github.sardul3.temporal_boot.common.utils.WorkflowIdGenerator;
 import com.github.sardul3.temporal_boot.common.workflows.SchedulePaymentWorkflow;
 
@@ -29,13 +30,13 @@ public class SchedulePaymentService {
 
     private final WorkflowClient workflowClient;
     private final TemporalConfigProperties workflowConfig;
+    private final TemporalOptionsHelper temporalOptionsHelper;
 
     public ScheduledPaymentConfirmation buildAndStartWorkflow(SchedulePaymentRequest request) {
         String workflowId = computeWorkflowId();
         LocalDateTime scheduledDateTime = convertDateTimeForSchedule(request.getWhen());
         SchedulePaymentWorkflow workflow = buildWorkflow(workflowId);
 
-        ActivityOptions activityOptions =  createActivityOptions(TemporalConstants.Activities.SCHEDULE_PAYMENT_ACTIVITIES);
         WorkflowClient.start(workflow::schedulePayment, new PaymentSchedulePayload(request.getFrom(), request.getTo(), request.getAmount(), scheduledDateTime));
         return buildConfirmation(workflowId);
     }
@@ -62,7 +63,7 @@ public class SchedulePaymentService {
         return workflowClient.newWorkflowStub(SchedulePaymentWorkflow.class, createWorkflowOptions(workflowId));
     }
 
-    private String computeWorkflowId() {
+    String computeWorkflowId() {
         return  WorkflowIdGenerator.generateWorkflowId(TemporalConstants.Workflows.PAYMENT_SCHEDULING_WORKFLOW, workflowConfig);
     }
 
@@ -79,39 +80,24 @@ public class SchedulePaymentService {
         return scheduledDateTime;
     }
 
-    private ScheduledPaymentConfirmation buildConfirmation(String workflowId) {
+    ScheduledPaymentConfirmation buildConfirmation(String workflowId) {
         ScheduledPaymentConfirmation confirmation = new ScheduledPaymentConfirmation();
         confirmation.setPaymentScheduleId(workflowId);
         return confirmation;
     }
 
-    private WorkflowOptions createWorkflowOptions(String workflowId) {
+    // Refactor to dynamically retrieve workflow options using TemporalOptionsHelper
+    WorkflowOptions createWorkflowOptions(String workflowId) {
+        // Get the current version of the PAYMENT_SCHEDULING_WORKFLOW
         String currentVersion = workflowConfig.getCurrentVersions().getWorkflows().get(TemporalConstants.Workflows.PAYMENT_SCHEDULING_WORKFLOW);
-        TemporalConfigProperties.WorkflowConfig workflowConfig = this.workflowConfig.getWorkflows().get(TemporalConstants.Workflows.PAYMENT_SCHEDULING_WORKFLOW);
-        TemporalConfigProperties.WorkflowVersionConfig versionConfig = workflowConfig.getVersions().get(currentVersion);
 
-        return WorkflowOptions.newBuilder()
-                .setTaskQueue(versionConfig.getTaskQueue())
-                .setWorkflowId(workflowId)
+        // Use TemporalOptionsHelper to dynamically get the workflow options
+        WorkflowOptions workflowOptions = temporalOptionsHelper.createWorkflowOptions(TemporalConstants.Workflows.PAYMENT_SCHEDULING_WORKFLOW, currentVersion)
+                .toBuilder() // Ensure we can modify the options further
+                .setWorkflowId(workflowId) // Set the dynamically generated workflow ID
                 .setWorkflowIdReusePolicy(WorkflowIdReusePolicy.WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE_FAILED_ONLY)
-                .setWorkflowRunTimeout(versionConfig.getRunTimeout())
-                .setWorkflowExecutionTimeout(versionConfig.getExecutionTimeout())
                 .build();
-    }
 
-    private ActivityOptions createActivityOptions(String activityName) {
-        String version = workflowConfig.getCurrentVersions().getActivities().get(activityName);
-        TemporalConfigProperties.ActivityConfig activityConfig = workflowConfig.getActivities().get(activityName);
-        TemporalConfigProperties.ActivityVersionConfig versionConfig = activityConfig.getVersions().get(version);
-
-        return ActivityOptions.newBuilder()
-                .setStartToCloseTimeout(versionConfig.getStartToCloseTimeout())
-                .setScheduleToCloseTimeout(versionConfig.getScheduleToCloseTimeout())
-                .setRetryOptions(RetryOptions.newBuilder()
-                        .setInitialInterval(versionConfig.getRetry().getInitialInterval())
-                        .setMaximumAttempts(versionConfig.getRetry().getMaxAttempts())
-                        .setBackoffCoefficient(versionConfig.getRetry().getBackoffCoefficient())
-                        .build())
-                .build();
+        return workflowOptions;
     }
 }

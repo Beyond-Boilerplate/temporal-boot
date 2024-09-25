@@ -32,6 +32,7 @@ public class SchedulePaymentActivitiesImpl implements SchedulePaymentActivities 
         log.info("Creating SchedulePaymentActivities task from {} to {} for amount {} at {}", from, to, amount, scheduledDate);
     }
 
+    // TODO: Make this idempotent (all write operations)
     @Override
     public Transaction runSchedulePayment(String from, String to, double amount, LocalDateTime scheduledDate) {
         Transaction transaction = new Transaction();
