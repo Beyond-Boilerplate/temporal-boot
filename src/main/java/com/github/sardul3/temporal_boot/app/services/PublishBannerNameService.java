@@ -16,8 +16,6 @@ import lombok.AllArgsConstructor;
 @Service
 @AllArgsConstructor
 public class PublishBannerNameService {
-
-    private final String WORKFLOW_ID_PREFIX = "PBN-";
     
     private WorkflowClient workflowClient;
     private final TemporalConfigProperties workflowConfig;
@@ -36,7 +34,7 @@ public class PublishBannerNameService {
     // USE workflowStub.cancel() to cancel the workflow execution
     public String buildAndStartWorkflowStatusQuery(String workflowId) {
         PublishBannerMessageWorkflow workflow = 
-            workflowClient.newWorkflowStub(PublishBannerMessageWorkflow.class, WORKFLOW_ID_PREFIX + workflowId);
+            workflowClient.newWorkflowStub(PublishBannerMessageWorkflow.class, workflowId);
         return workflow.getWorkflowStatus();
     }
 
