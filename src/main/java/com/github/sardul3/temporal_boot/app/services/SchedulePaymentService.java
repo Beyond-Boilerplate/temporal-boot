@@ -26,8 +26,6 @@ import java.time.format.DateTimeParseException;
 @AllArgsConstructor
 public class SchedulePaymentService {
 
-    private final String WORKFLOW_ID_PREFIX = "SPY-";
-
     private final WorkflowClient workflowClient;
     private final TemporalConfigProperties workflowConfig;
     private final TemporalOptionsHelper temporalOptionsHelper;
@@ -46,7 +44,7 @@ public class SchedulePaymentService {
     public String buildAndStartWorkflowForCancellation(String scheduleId) {
         // USE Workflow.newExternalWorkflowStub to send SIGNALs from one workflow to another
         SchedulePaymentWorkflow workflow = 
-            workflowClient.newWorkflowStub(SchedulePaymentWorkflow.class, WORKFLOW_ID_PREFIX + scheduleId);
+            workflowClient.newWorkflowStub(SchedulePaymentWorkflow.class, scheduleId);
         WorkflowStub workflowStub = WorkflowStub.fromTyped(workflow);
         workflowStub.cancel();
         return "Cancellation Requested";
@@ -54,7 +52,7 @@ public class SchedulePaymentService {
 
     public String buildAndStartWorkflowForFastForward(String workflowID) {
         SchedulePaymentWorkflow workflow = 
-             workflowClient.newWorkflowStub(SchedulePaymentWorkflow.class, WORKFLOW_ID_PREFIX + workflowID);
+             workflowClient.newWorkflowStub(SchedulePaymentWorkflow.class, workflowID);
         workflow.fastForwardSignal(workflowID);
         return "Fast Forward Requested";
     }

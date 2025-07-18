@@ -156,6 +156,21 @@ temporal-boot/
 - `POST /api/banner/name` - Submit new banner message
 - `GET /api/banner/name/{id}/status` - Check workflow status
 
+**Example Usage:**
+```bash
+# Submit new banner message
+curl -X POST http://localhost:8080/api/banner/name \
+  -H "Content-Type: application/json" \
+  -H "X-Correlation-ID: banner-request-123" \
+  -d '{
+    "message": "Welcome to our new website!"
+  }'
+
+# Check banner message status
+curl -X GET http://localhost:8080/api/banner/name/PBW-uuid-generated-id/status \
+  -H "X-Correlation-ID: status-check-456"
+```
+
 ### 2. Payment Scheduling Workflow
 
 **Purpose:** Schedule and process payments with retry mechanisms
@@ -170,6 +185,28 @@ temporal-boot/
 - `POST /api/transactions/schedule` - Schedule a payment
 - `POST /api/transactions/schedule/{id}/fast-forward` - Fast-forward scheduled payment
 - `POST /api/transactions/schedule/{id}/cancel` - Cancel scheduled payment
+
+**Example Usage:**
+```bash
+# Schedule a payment
+curl -X POST http://localhost:8080/api/transactions/schedule \
+  -H "Content-Type: application/json" \
+  -H "X-Correlation-ID: payment-request-123" \
+  -d '{
+    "from": "account-123",
+    "to": "account-456", 
+    "amount": 150.50,
+    "when": "2024-01-15T10:30:00"
+  }'
+
+# Fast-forward scheduled payment
+curl -X POST http://localhost:8080/api/transactions/schedule/PSW-uuid-generated-id/fast-forward \
+  -H "X-Correlation-ID: fast-forward-456"
+
+# Cancel scheduled payment
+curl -X POST http://localhost:8080/api/transactions/schedule/PSW-uuid-generated-id/cancel \
+  -H "X-Correlation-ID: cancel-789"
+```
 
 ## ⚙️ Configuration
 
@@ -226,6 +263,151 @@ The application exposes health endpoints:
 
 - `GET /actuator/health` - Application health status
 - `GET /actuator/info` - Application information
+
+### API Testing
+
+#### Banner Message Publishing
+
+**Submit Different Types of Banner Messages:**
+
+```bash
+# Simple banner message
+curl -X POST http://localhost:8080/api/banner/name \
+  -H "Content-Type: application/json" \
+  -H "X-Correlation-ID: simple-banner" \
+  -d '{
+    "message": "Welcome to our new website!"
+  }'
+
+# Promotional banner message
+curl -X POST http://localhost:8080/api/banner/name \
+  -H "Content-Type: application/json" \
+  -H "X-Correlation-ID: promo-banner" \
+  -d '{
+    "message": "Special promotion: 50% off all items!"
+  }'
+
+# Banner message with special characters
+curl -X POST http://localhost:8080/api/banner/name \
+  -H "Content-Type: application/json" \
+  -H "X-Correlation-ID: special-banner" \
+  -d '{
+    "message": " Happy New Year! 🎊 Special offers available now!"
+  }'
+```
+
+**Check Workflow Status:**
+
+```bash
+# Replace PBW-uuid-generated-id with the actual ID from the response
+curl -X GET http://localhost:8080/api/banner/name/PBW-uuid-generated-id/status \
+  -H "X-Correlation-ID: status-check"
+```
+
+#### Payment Scheduling
+
+**Schedule Different Types of Payments:**
+
+```bash
+# Small payment
+curl -X POST http://localhost:8080/api/transactions/schedule \
+  -H "Content-Type: application/json" \
+  -H "X-Correlation-ID: small-payment" \
+  -d '{
+    "from": "checking-account",
+    "to": "savings-account",
+    "amount": 25.00,
+    "when": "2024-01-20 09:00"
+  }'
+
+# Large payment
+curl -X POST http://localhost:8080/api/transactions/schedule \
+  -H "Content-Type: application/json" \
+  -H "X-Correlation-ID: large-payment" \
+  -d '{
+    "from": "business-account",
+    "to": "vendor-account",
+    "amount": 5000.00,
+    "when": "2024-01-25 14:30"
+  }'
+
+# Immediate payment (past date)
+curl -X POST http://localhost:8080/api/transactions/schedule \
+  -H "Content-Type: application/json" \
+  -H "X-Correlation-ID: immediate-payment" \
+  -d '{
+    "from": "user-account-001",
+    "to": "merchant-account-002",
+    "amount": 99.99,
+    "when": "2024-01-10 12:00"
+  }'
+```
+
+**Manage Scheduled Payments:**
+
+```bash
+# Fast-forward a scheduled payment (execute immediately)
+curl -X POST http://localhost:8080/api/transactions/schedule/PSW-uuid-generated-id/fast-forward \
+  -H "X-Correlation-ID: fast-forward"
+
+# Cancel a scheduled payment
+curl -X POST http://localhost:8080/api/transactions/schedule/PSW-uuid-generated-id/cancel \
+  -H "X-Correlation-ID: cancel"
+```
+
+#### Complete Testing Workflow
+
+**Test Banner Publishing Workflow:**
+
+```bash
+# 1. Submit banner message
+RESPONSE=$(curl -s -X POST http://localhost:8080/api/banner/name \
+  -H "Content-Type: application/json" \
+  -H "X-Correlation-ID: test-banner" \
+  -d '{
+    "message": "Test banner message"
+  }')
+
+# 2. Extract tracking ID
+TRACKING_ID=$(echo $RESPONSE | grep -o '"requestTrackingId":"[^"]*"' | cut -d'"' -f4)
+
+echo "Banner tracking ID: $TRACKING_ID"
+
+# 3. Check status
+curl -X GET http://localhost:8080/api/banner/name/$TRACKING_ID/status \
+  -H "X-Correlation-ID: test-status"
+```
+
+**Test Payment Scheduling Workflow:**
+
+```bash
+# 1. Schedule a payment
+RESPONSE=$(curl -s -X POST http://localhost:8080/api/transactions/schedule \
+  -H "Content-Type: application/json" \
+  -H "X-Correlation-ID: test-payment" \
+  -d '{
+    "from": "test-account-1",
+    "to": "test-account-2",
+    "amount": 100.00,
+    "when": "2024-01-15T10:30:00"
+  }')
+
+# 2. Extract payment schedule ID
+PAYMENT_ID=$(echo $RESPONSE | grep -o '"paymentScheduleId":"[^"]*"' | cut -d'"' -f4)
+
+echo "Payment schedule ID: $PAYMENT_ID"
+
+# 3. Fast-forward the payment
+curl -X POST http://localhost:8080/api/transactions/schedule/$PAYMENT_ID/fast-forward \
+  -H "X-Correlation-ID: test-fast-forward"
+```
+
+### Testing Notes
+
+- **Port**: Application runs on port `8080`
+- **Correlation ID**: Optional but recommended for request tracking
+- **Date Format**: Use ISO 8601 format for payment scheduling (`YYYY-MM-DDTHH:mm:ss`)
+- **Workers**: Ensure both workers are running for complete workflow testing
 
 ## 🔧 Development
 
