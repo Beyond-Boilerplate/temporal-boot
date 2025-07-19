@@ -75,6 +75,7 @@ public class TemporalConfigProperties {
         private Map<String, String> workflows;
         private Map<String, String> activities;
         private Map<String, String> workers;
+        private Map<String, String> useCases;
     }
 }
 

@@ -1,0 +1,7 @@
+server:
+  port: 8083 # Port for the ProductDataImprovementWorker
+
+spring:
+  config:
+    activate:
+      on-profile: product-data-improvement-worker

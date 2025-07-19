@@ -20,5 +20,6 @@ public class TemporalConstants {
     public static class Workers {
         public static final String SCHEDULE_PAYMENT_WORKER =  "paymentScheduleWorker";
         public static final String PUBLISH_BANNER_MESSAGE_WORKER =  "publishBannerWorker";
+        public static final String PRODUCT_DATA_IMPROVEMENT_WORKER =  "productDataImprovementWorker";
     }
 }

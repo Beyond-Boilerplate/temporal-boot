@@ -43,6 +43,14 @@ temporal-config:
           executionTimeout: 60s
           runTimeout: 7200s
           taskQueue: "BANNER_MESSAGE_QUEUE"
+    productDataImprovementWorkflow:
+      prefix: "PDI" # IN_USE
+      keyGenerationStrategy: "UUID" # IN_USE
+      versions:
+        default:
+          executionTimeout: 60s
+          runTimeout: 7200s
+          taskQueue: "PRODUCT_IMPROVEMENT_QUEUE"
 
   activities:
     publishBannerMessageActivities:
@@ -72,6 +80,15 @@ temporal-config:
             initialInterval: 1s
             maxAttempts: 1  
             backoffCoefficient: 1.0
+    productDataImprovementActivities:
+      versions:
+        default:
+          scheduleToCloseTimeout: 300s
+          startToCloseTimeout: 180s
+          retry:
+            initialInterval: 1s
+            maxAttempts: 3
+            backoffCoefficient: 2.0
 
   workers:
     publishBannerWorker:
@@ -86,16 +103,27 @@ temporal-config:
         - paymentSchedulingWorkflow
       activities:
         - schedulePaymentActivities
+    productDataImprovementWorker:
+      taskQueue: "PRODUCT_IMPROVEMENT_QUEUE" # IN_USE
+      workflows:
+        - productDataImprovementWorkflow
+      activities:
+        - productDataImprovementActivities
 
   current-versions:
     workflows:
       paymentSchedulingWorkflow: v1 # IN_USE
       publishBannerMessageWorkflow: default # IN_USE
+      productDataImprovementWorkflow: default # IN_USE
+    use-cases:
+      ProductDataImprovementWorkflow: productDataImprovementWorkflow
     activities:
       schedulePaymentActivitiesNoRetry: v1
       schedulePaymentActivities: v1
       publishBannerMessageActivities: default
+      productDataImprovementActivities: default
     workers:
       paymentScheduleWorker: v1
       publishBannerWorker: default
+      productDataImprovementWorker: default
 
