@@ -67,6 +67,11 @@ The application can be run in different modes using Spring profiles:
 ./gradlew bootRun --args='--spring.profiles.active=payment-schedule-worker'
 ```
 
+**Product Data Improvement Worker:**
+```bash
+./gradlew bootRun --args='--spring.profiles.active=product-data-improvement-worker'
+```
+
 #### 4. Using Custom Gradle Tasks
 
 The project includes custom Gradle tasks for running workers:
@@ -78,6 +83,7 @@ The project includes custom Gradle tasks for running workers:
 # Run specific workers using profiles
 ./gradlew bootRun --args='--spring.profiles.active=publish-banner-worker'
 ./gradlew bootRun --args='--spring.profiles.active=payment-schedule-worker'
+./gradlew bootRun --args='--spring.profiles.active=product-data-improvement-worker'
 ```
 
 ### Docker Deployment
@@ -206,6 +212,60 @@ curl -X POST http://localhost:8080/api/transactions/schedule/PSW-uuid-generated-
 # Cancel scheduled payment
 curl -X POST http://localhost:8080/api/transactions/schedule/PSW-uuid-generated-id/cancel \
   -H "X-Correlation-ID: cancel-789"
+```
+
+### 3. Product Data Improvement Workflow
+
+**Purpose:** Process CSV files containing GTINs and improve product data using AI
+
+**Components:**
+- **Workflow:** `ProductDataImprovementWorkflow`
+- **Activities:** `ProductDataImprovementActivities`
+- **Worker:** `ProductDataImprovementWorker`
+- **Task Queue:** `PRODUCT_IMPROVEMENT_QUEUE`
+
+**API Endpoints:**
+- `POST /api/product/improve` - Start product data improvement workflow
+- `GET /api/product/improve/{id}/status` - Check workflow status
+
+**Sample CSV File Setup:**
+
+Create a file named `sample_products.csv` in your project root:
+
+```csv
+gtin
+1234567890123
+1234567890124
+1234567890125
+1234567890126
+1234567890127
+1234567890128
+1234567890129
+1234567890130
+1234567890131
+1234567890132
+```
+
+**Example Usage:**
+```bash
+# Start product data improvement workflow
+curl -X POST http://localhost:8080/api/product/improve \
+  -H "Content-Type: application/json" \
+  -H "X-Correlation-ID: product-improvement-123" \
+  -d '{
+    "fileReference": {
+      "path": "sample_products.csv",
+      "mimeType": "text/csv",
+      "fileSizeBytes": 512
+    },
+    "useCase": {
+      "name": "ProductDataImprovementWorkflow"
+    }
+  }'
+
+# Check workflow status
+curl -X GET http://localhost:8080/api/product/improve/PDI-uuid-generated-id/status \
+  -H "X-Correlation-ID: status-check"
 ```
 
 ## ⚙️ Configuration
@@ -355,6 +415,50 @@ curl -X POST http://localhost:8080/api/transactions/schedule/PSW-uuid-generated-
   -H "X-Correlation-ID: cancel"
 ```
 
+#### Product Data Improvement
+
+**Start Product Data Improvement Workflow:**
+
+```bash
+# Basic product data improvement
+curl -X POST http://localhost:8080/api/product/improve \
+  -H "Content-Type: application/json" \
+  -H "X-Correlation-ID: product-improvement" \
+  -d '{
+    "fileReference": {
+      "path": "sample_products.csv",
+      "mimeType": "text/csv",
+      "fileSizeBytes": 512
+    },
+    "useCase": {
+      "name": "ProductDataImprovementWorkflow"
+    }
+  }'
+
+# Product data improvement with different file
+curl -X POST http://localhost:8080/api/product/improve \
+  -H "Content-Type: application/json" \
+  -H "X-Correlation-ID: product-improvement-large" \
+  -d '{
+    "fileReference": {
+      "path": "large_product_catalog.csv",
+      "mimeType": "text/csv",
+      "fileSizeBytes": 2048
+    },
+    "useCase": {
+      "name": "ProductDataImprovementWorkflow"
+    }
+  }'
+```
+
+**Check Workflow Status:**
+
+```bash
+# Replace PDI-uuid-generated-id with the actual ID from the response
+curl -X GET http://localhost:8080/api/product/improve/PDI-uuid-generated-id/status \
+  -H "X-Correlation-ID: status-check"
+```
+
 #### Complete Testing Workflow
 
 **Test Banner Publishing Workflow:**
@@ -402,12 +506,42 @@ curl -X POST http://localhost:8080/api/transactions/schedule/$PAYMENT_ID/fast-fo
   -H "X-Correlation-ID: test-fast-forward"
 ```
 
+**Test Product Data Improvement Workflow:**
+
+```bash
+# 1. Start product data improvement workflow
+RESPONSE=$(curl -s -X POST http://localhost:8080/api/product/improve \
+  -H "Content-Type: application/json" \
+  -H "X-Correlation-ID: test-improvement" \
+  -d '{
+    "fileReference": {
+      "path": "sample_products.csv",
+      "mimeType": "text/csv",
+      "fileSizeBytes": 512
+    },
+    "useCase": {
+      "name": "ProductDataImprovementWorkflow"
+    }
+  }')
+
+# 2. Extract workflow ID
+WORKFLOW_ID=$(echo $RESPONSE | grep -o '"workflowId":"[^"]*"' | cut -d'"' -f4)
+
+echo "Product improvement workflow ID: $WORKFLOW_ID"
+
+# 3. Check status
+curl -X GET http://localhost:8080/api/product/improve/$WORKFLOW_ID/status \
+  -H "X-Correlation-ID: test-status"
+```
+
 ### Testing Notes
 
 - **Port**: Application runs on port `8080`
 - **Correlation ID**: Optional but recommended for request tracking
 - **Date Format**: Use ISO 8601 format for payment scheduling (`YYYY-MM-DDTHH:mm:ss`)
-- **Workers**: Ensure both workers are running for complete workflow testing
+- **Workers**: Ensure all workers are running for complete workflow testing
+- **CSV Files**: Make sure sample CSV files are accessible to the application
+- **File Paths**: Use relative paths for CSV files in the project root directory
 
 ## 🔧 Development
 
